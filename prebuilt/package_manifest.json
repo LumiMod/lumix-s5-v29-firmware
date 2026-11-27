@@ -1,0 +1,33 @@
+{
+  "official_sha256": "b2ec4aeec209693b874df8dfdf11fc85b38fa4675b44ec554b7a167f430827e1",
+  "output": "/Users/lixiuqi/相机功能验证/s5_v29_patched/S5___V29_ALL_PATCHED.bin",
+  "components": [
+    {
+      "index": 3,
+      "name": "program",
+      "file": "03_program.bin",
+      "size": 16674816,
+      "iv": "1198b52525a4a0d03c6b9eee4d650bdf",
+      "plaintext_sha256": "85e92ca65de3ad7c8318a39a443de533739306a6fdb3608695df582560153ff5"
+    },
+    {
+      "index": 7,
+      "name": "postboot3",
+      "file": "07_postboot3.bin",
+      "size": 8257536,
+      "iv": "3a3a619d8316c86a5ae73a7a5e73abc2",
+      "plaintext_sha256": "7e444669a577d09eb1b4b2d69c32e43802d4bf180f8f3caeac99ae16f268e1d8"
+    },
+    {
+      "index": 20,
+      "name": "osdover",
+      "file": "20_osdover.bin",
+      "size": 10485760,
+      "iv": "16261b47a44e3cc6c1675a4baed8180f",
+      "plaintext_sha256": "2181c40dd01ad78cca584a64c2292dcb9f57121d9340fcc963bbf33b276af843"
+    }
+  ],
+  "output_sha256": "3c4daff36f5dec2f6c67f50d4f4e4a3aa5f9138a97cd4ca349bfe2eae97a56da",
+  "outer_crc32": "0xd4f17a6b",
+  "round_trip_verified": true
+}

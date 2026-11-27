@@ -1,0 +1,478 @@
+{
+  "03_program": {
+    "base_patches": {
+      "source": "/Users/lixiuqi/相机功能验证/s5_v29_decrypted/03_program.bin",
+      "source_sha256": "fc496d62a91f6e9b1b84807183bb805bc546c9105d2938546b58a66ad9d132fe",
+      "output": "/Users/lixiuqi/相机功能验证/s5_v29_patched/03_program.bin",
+      "output_sha256": "62bff3f4d6218066f668d026b28f8a66db4c0a724c925b531502883ba885f378",
+      "size_bytes": 16674816,
+      "with_all_i": true,
+      "all_modes": true,
+      "bitrate_mbps_6k_59k": 300,
+      "playback_lut_fix": true,
+      "patches_applied": 61,
+      "patches": [
+        {
+          "name": "remove_recording_time_limit",
+          "va": "0x868261b6",
+          "file_offset": "0x5a61b6",
+          "old_u16": "0x4628",
+          "new_u16": "0x2000"
+        },
+        {
+          "name": "unsigned_skip_ecdsa_keep_sha256",
+          "va": "0x868c70a4",
+          "file_offset": "0x6470a4",
+          "old_u16": "0xf899",
+          "new_u16": "0xe7f8"
+        },
+        {
+          "name": "ntsc_wl_59k30_lo",
+          "va": "0x86f15e88",
+          "file_offset": "0xc95e88",
+          "old_u16": "0x00cc",
+          "new_u16": "0x00f4"
+        },
+        {
+          "name": "ntsc_wl_59k30_hi",
+          "va": "0x86f15e8a",
+          "file_offset": "0xc95e8a",
+          "old_u16": "0x80cc",
+          "new_u16": "0x80f4"
+        },
+        {
+          "name": "ntsc_wl_c4k24_150m_10bit_lo",
+          "va": "0x86f15e8c",
+          "file_offset": "0xc95e8c",
+          "old_u16": "0x00ce",
+          "new_u16": "0x00b7"
+        },
+        {
+          "name": "ntsc_wl_c4k24_150m_10bit_hi",
+          "va": "0x86f15e8e",
+          "file_offset": "0xc95e8e",
+          "old_u16": "0x80ce",
+          "new_u16": "0x80b7"
+        },
+        {
+          "name": "ntsc_wl_59k24_lo",
+          "va": "0x86f15e90",
+          "file_offset": "0xc95e90",
+          "old_u16": "0x00d1",
+          "new_u16": "0x00f1"
+        },
+        {
+          "name": "ntsc_wl_59k24_hi",
+          "va": "0x86f15e92",
+          "file_offset": "0xc95e92",
+          "old_u16": "0x80d1",
+          "new_u16": "0x80f1"
+        },
+        {
+          "name": "ntsc_wl_6k2398_lo",
+          "va": "0x86f15e94",
+          "file_offset": "0xc95e94",
+          "old_u16": "0x00d2",
+          "new_u16": "0x00ed"
+        },
+        {
+          "name": "ntsc_wl_6k2398_hi",
+          "va": "0x86f15e96",
+          "file_offset": "0xc95e96",
+          "old_u16": "0x80d2",
+          "new_u16": "0x80ed"
+        },
+        {
+          "name": "ntsc_tpl_59k30_lo",
+          "va": "0x870895f4",
+          "file_offset": "0xe095f4",
+          "old_u16": "0x00cc",
+          "new_u16": "0x00f4"
+        },
+        {
+          "name": "ntsc_tpl_59k30_hi",
+          "va": "0x870895fc",
+          "file_offset": "0xe095fc",
+          "old_u16": "0x80cc",
+          "new_u16": "0x80f4"
+        },
+        {
+          "name": "ntsc_tpl_c4k24_150m_10bit_lo",
+          "va": "0x87089604",
+          "file_offset": "0xe09604",
+          "old_u16": "0x00ce",
+          "new_u16": "0x00b7"
+        },
+        {
+          "name": "ntsc_tpl_c4k24_150m_10bit_hi",
+          "va": "0x8708960c",
+          "file_offset": "0xe0960c",
+          "old_u16": "0x80ce",
+          "new_u16": "0x80b7"
+        },
+        {
+          "name": "ntsc_tpl_59k24_lo",
+          "va": "0x87089614",
+          "file_offset": "0xe09614",
+          "old_u16": "0x00d1",
+          "new_u16": "0x00f1"
+        },
+        {
+          "name": "ntsc_tpl_59k24_hi",
+          "va": "0x8708961c",
+          "file_offset": "0xe0961c",
+          "old_u16": "0x80d1",
+          "new_u16": "0x80f1"
+        },
+        {
+          "name": "ntsc_tpl_6k2398_lo",
+          "va": "0x87089624",
+          "file_offset": "0xe09624",
+          "old_u16": "0x00d2",
+          "new_u16": "0x00ed"
+        },
+        {
+          "name": "ntsc_tpl_6k2398_hi",
+          "va": "0x8708962c",
+          "file_offset": "0xe0962c",
+          "old_u16": "0x80d2",
+          "new_u16": "0x80ed"
+        },
+        {
+          "name": "pal_wl_59k25_lo",
+          "va": "0x86f15ed6",
+          "file_offset": "0xc95ed6",
+          "old_u16": "0x00cd",
+          "new_u16": "0x00f3"
+        },
+        {
+          "name": "pal_wl_59k25_hi",
+          "va": "0x86f15ed8",
+          "file_offset": "0xc95ed8",
+          "old_u16": "0x80cd",
+          "new_u16": "0x80f3"
+        },
+        {
+          "name": "pal_wl_54k_og25_lo",
+          "va": "0x86f15eda",
+          "file_offset": "0xc95eda",
+          "old_u16": "0x00cf",
+          "new_u16": "0x00ef"
+        },
+        {
+          "name": "pal_wl_54k_og25_hi",
+          "va": "0x86f15edc",
+          "file_offset": "0xc95edc",
+          "old_u16": "0x80cf",
+          "new_u16": "0x80ef"
+        },
+        {
+          "name": "pal_tpl_59k25_lo",
+          "va": "0x870896cc",
+          "file_offset": "0xe096cc",
+          "old_u16": "0x00cd",
+          "new_u16": "0x00f3"
+        },
+        {
+          "name": "pal_tpl_59k25_hi",
+          "va": "0x870896d4",
+          "file_offset": "0xe096d4",
+          "old_u16": "0x80cd",
+          "new_u16": "0x80f3"
+        },
+        {
+          "name": "pal_tpl_54k_og25_lo",
+          "va": "0x870896dc",
+          "file_offset": "0xe096dc",
+          "old_u16": "0x00cf",
+          "new_u16": "0x00ef"
+        },
+        {
+          "name": "pal_tpl_54k_og25_hi",
+          "va": "0x870896e4",
+          "file_offset": "0xe096e4",
+          "old_u16": "0x80cf",
+          "new_u16": "0x80ef"
+        },
+        {
+          "name": "ntsc_wl_4k24_400m_alli_lo",
+          "va": "0x86f15e74",
+          "file_offset": "0xc95e74",
+          "old_u16": "0x009b",
+          "new_u16": "0x0098"
+        },
+        {
+          "name": "ntsc_wl_4k24_400m_alli_hi",
+          "va": "0x86f15e76",
+          "file_offset": "0xc95e76",
+          "old_u16": "0x809b",
+          "new_u16": "0x8098"
+        },
+        {
+          "name": "ntsc_wl_c4k24_400m_alli_lo",
+          "va": "0x86f15e68",
+          "file_offset": "0xc95e68",
+          "old_u16": "0x009f",
+          "new_u16": "0x00b8"
+        },
+        {
+          "name": "ntsc_wl_c4k24_400m_alli_hi",
+          "va": "0x86f15e6a",
+          "file_offset": "0xc95e6a",
+          "old_u16": "0x809f",
+          "new_u16": "0x80b8"
+        },
+        {
+          "name": "ntsc_wl_c4k30_400m_alli_lo",
+          "va": "0x86f15e78",
+          "file_offset": "0xc95e78",
+          "old_u16": "0x00a1",
+          "new_u16": "0x0090"
+        },
+        {
+          "name": "ntsc_wl_c4k30_400m_alli_hi",
+          "va": "0x86f15e7a",
+          "file_offset": "0xc95e7a",
+          "old_u16": "0x80a1",
+          "new_u16": "0x8090"
+        },
+        {
+          "name": "ntsc_wl_4ka24_400m_alli_lo",
+          "va": "0x86f15e6c",
+          "file_offset": "0xc95e6c",
+          "old_u16": "0x00a5",
+          "new_u16": "0x00a9"
+        },
+        {
+          "name": "ntsc_wl_4ka24_400m_alli_hi",
+          "va": "0x86f15e6e",
+          "file_offset": "0xc95e6e",
+          "old_u16": "0x80a5",
+          "new_u16": "0x80a9"
+        },
+        {
+          "name": "ntsc_wl_fhd24_200m_alli_lo",
+          "va": "0x86f15e70",
+          "file_offset": "0xc95e70",
+          "old_u16": "0x00a7",
+          "new_u16": "0x00d0"
+        },
+        {
+          "name": "ntsc_wl_fhd24_200m_alli_hi",
+          "va": "0x86f15e72",
+          "file_offset": "0xc95e72",
+          "old_u16": "0x80a7",
+          "new_u16": "0x80d0"
+        },
+        {
+          "name": "ntsc_wl_6k2400_lo",
+          "va": "0x86f15e80",
+          "file_offset": "0xc95e80",
+          "old_u16": "0x00be",
+          "new_u16": "0x00ee"
+        },
+        {
+          "name": "ntsc_wl_6k2400_hi",
+          "va": "0x86f15e82",
+          "file_offset": "0xc95e82",
+          "old_u16": "0x80be",
+          "new_u16": "0x80ee"
+        },
+        {
+          "name": "ntsc_wl_59k2400_lo",
+          "va": "0x86f15e84",
+          "file_offset": "0xc95e84",
+          "old_u16": "0x00c0",
+          "new_u16": "0x00f2"
+        },
+        {
+          "name": "ntsc_wl_59k2400_hi",
+          "va": "0x86f15e86",
+          "file_offset": "0xc95e86",
+          "old_u16": "0x80c0",
+          "new_u16": "0x80f2"
+        },
+        {
+          "name": "ntsc_tpl_4k24_400m_alli_lo",
+          "va": "0x87089574",
+          "file_offset": "0xe09574",
+          "old_u16": "0x009b",
+          "new_u16": "0x0098"
+        },
+        {
+          "name": "ntsc_tpl_4k24_400m_alli_hi",
+          "va": "0x8708957c",
+          "file_offset": "0xe0957c",
+          "old_u16": "0x809b",
+          "new_u16": "0x8098"
+        },
+        {
+          "name": "ntsc_tpl_c4k24_400m_alli_lo",
+          "va": "0x87089584",
+          "file_offset": "0xe09584",
+          "old_u16": "0x009f",
+          "new_u16": "0x00b8"
+        },
+        {
+          "name": "ntsc_tpl_c4k24_400m_alli_hi",
+          "va": "0x8708958c",
+          "file_offset": "0xe0958c",
+          "old_u16": "0x809f",
+          "new_u16": "0x80b8"
+        },
+        {
+          "name": "ntsc_tpl_c4k30_400m_alli_lo",
+          "va": "0x87089594",
+          "file_offset": "0xe09594",
+          "old_u16": "0x00a1",
+          "new_u16": "0x0090"
+        },
+        {
+          "name": "ntsc_tpl_c4k30_400m_alli_hi",
+          "va": "0x8708959c",
+          "file_offset": "0xe0959c",
+          "old_u16": "0x80a1",
+          "new_u16": "0x8090"
+        },
+        {
+          "name": "ntsc_tpl_4ka24_400m_alli_lo",
+          "va": "0x870895a4",
+          "file_offset": "0xe095a4",
+          "old_u16": "0x00a5",
+          "new_u16": "0x00a9"
+        },
+        {
+          "name": "ntsc_tpl_4ka24_400m_alli_hi",
+          "va": "0x870895ac",
+          "file_offset": "0xe095ac",
+          "old_u16": "0x80a5",
+          "new_u16": "0x80a9"
+        },
+        {
+          "name": "ntsc_tpl_fhd24_200m_alli_lo",
+          "va": "0x870895c4",
+          "file_offset": "0xe095c4",
+          "old_u16": "0x00a7",
+          "new_u16": "0x00d0"
+        },
+        {
+          "name": "ntsc_tpl_fhd24_200m_alli_hi",
+          "va": "0x870895cc",
+          "file_offset": "0xe095cc",
+          "old_u16": "0x80a7",
+          "new_u16": "0x80d0"
+        },
+        {
+          "name": "ntsc_tpl_6k2400_lo",
+          "va": "0x870895d4",
+          "file_offset": "0xe095d4",
+          "old_u16": "0x00be",
+          "new_u16": "0x00ee"
+        },
+        {
+          "name": "ntsc_tpl_6k2400_hi",
+          "va": "0x870895dc",
+          "file_offset": "0xe095dc",
+          "old_u16": "0x80be",
+          "new_u16": "0x80ee"
+        },
+        {
+          "name": "ntsc_tpl_59k2400_lo",
+          "va": "0x870895e4",
+          "file_offset": "0xe095e4",
+          "old_u16": "0x00c0",
+          "new_u16": "0x00f2"
+        },
+        {
+          "name": "ntsc_tpl_59k2400_hi",
+          "va": "0x870895ec",
+          "file_offset": "0xe095ec",
+          "old_u16": "0x80c0",
+          "new_u16": "0x80f2"
+        },
+        {
+          "name": "disable_playback_double_lut",
+          "va": "0x866ae770",
+          "file_offset": "0x42e770",
+          "old_u16": "0xd013",
+          "new_u16": "0xe013"
+        },
+        {
+          "name": "bitrate_6k_og_entry1",
+          "va": "0x86a08a7c",
+          "file_offset": "0x788a7c",
+          "old_bps": 200000000,
+          "new_bps": 300000000
+        },
+        {
+          "name": "bitrate_6k_og_entry2",
+          "va": "0x86a08af0",
+          "file_offset": "0x788af0",
+          "old_bps": 200000000,
+          "new_bps": 300000000
+        },
+        {
+          "name": "bitrate_59k_entry1",
+          "va": "0x86a08c4c",
+          "file_offset": "0x788c4c",
+          "old_bps": 200000000,
+          "new_bps": 300000000
+        },
+        {
+          "name": "bitrate_59k_entry2",
+          "va": "0x86a08cc0",
+          "file_offset": "0x788cc0",
+          "old_bps": 200000000,
+          "new_bps": 300000000
+        },
+        {
+          "name": "bitrate_59k_entry3",
+          "va": "0x86a08d34",
+          "file_offset": "0x788d34",
+          "old_bps": 200000000,
+          "new_bps": 300000000
+        },
+        {
+          "name": "bitrate_59k_entry4",
+          "va": "0x86a08da8",
+          "file_offset": "0x788da8",
+          "old_bps": 200000000,
+          "new_bps": 300000000
+        }
+      ]
+    },
+    "control_center": {
+      "payload_address_low": "0x07100000",
+      "state_address_low": "0x07108000",
+      "payload_bytes": 28280,
+      "key_dispatch_hook": "0x064759c6",
+      "cc_key_hook_entry": "0x07100e79",
+      "setup_menu_hook": "0x068596ae",
+      "cc_open_entry": "0x07100049",
+      "egl_swap_inline_hook": "0x064c3cda",
+      "cc_egl_swap_entry": "0x07102a99"
+    },
+    "program_sha256": "85e92ca65de3ad7c8318a39a443de533739306a6fdb3608695df582560153ff5"
+  },
+  "07_postboot3": {
+    "hook_call": "0x877537a2",
+    "payload_address": "0x879f7900",
+    "hook_entry": "0x879f7901",
+    "payload_bytes": 10616,
+    "postboot3_sha256": "7e444669a577d09eb1b4b2d69c32e43802d4bf180f8f3caeac99ae16f268e1d8"
+  },
+  "20_osdover": {
+    "source": "/Users/lixiuqi/相机功能验证/s5_v29_decrypted/20_osdover.bin",
+    "zh_patch": {
+      "offset": "0x876436",
+      "old": "像素更新",
+      "new": "控制中心"
+    },
+    "en_patch": {
+      "offset": "0x551654",
+      "old": "Pixel Refresh",
+      "new": "ControlCenter"
+    },
+    "sha256": "2181c40dd01ad78cca584a64c2292dcb9f57121d9340fcc963bbf33b276af843"
+  }
+}

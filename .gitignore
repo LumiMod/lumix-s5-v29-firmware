@@ -1,0 +1,10 @@
+# RULES-ACTIVE-GLOBAL
+.DS_Store
+*.o
+*.pyc
+__pycache__/
+build/
+qemu_test_run/
+.pack-*/
+*.bak
+*.lock

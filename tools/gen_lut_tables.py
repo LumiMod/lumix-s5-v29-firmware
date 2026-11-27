@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+# RULES-ACTIVE-GLOBAL
+"""Generate direct YCbCr->YCbCr 17^3 LUT (film_ycbcr_lut17) and 0xBEEF 9^3 octant map."""
+
+from __future__ import annotations
+
+import re
+import struct
+from pathlib import Path
+
+FILM_LUT_H = Path("/Users/lixiuqi/Documents/ChatGPT/相机/s5-v29-offline/lut-firmware-ui-experiment/film_lut.h")
+PROGRAM_BIN = Path("/Users/lixiuqi/相机功能验证/s5_v29_decrypted/03_program.bin")
+DEST = Path("/Users/lixiuqi/相机功能验证/s5_v29_patched/lut_tables.h")
+
+PROGRAM_BASE_VA = 0x86280000
+OCTANT_TABLE_VA = 0x86E39EB4
+OCTANT_BASE_OFFSETS = (0, 125, 225, 325, 405, 505, 585, 665)
+
+
+def clamp_u8(v: float) -> int:
+    iv = int(round(v))
+    return 0 if iv < 0 else (255 if iv > 255 else iv)
+
+
+def clamp_s8(v: float) -> int:
+    iv = int(round(v))
+    return -128 if iv < -128 else (127 if iv > 127 else iv)
+
+
+def load_film_lut33_rgb() -> list[tuple[float, float, float]]:
+    text = FILM_LUT_H.read_text(encoding="utf-8")
+    body = text.split("{", 1)[1].rsplit("}", 1)[0]
+    vals = [int(x) for x in re.findall(r"\d+", body)]
+    assert len(vals) == 33 * 33 * 33 * 3, f"Unexpected film_lut length: {len(vals)}"
+    out = []
+    for i in range(0, len(vals), 3):
+        out.append((vals[i] * 255.0 / 65535.0, vals[i + 1] * 255.0 / 65535.0, vals[i + 2] * 255.0 / 65535.0))
+    return out
+
+
+def sample_rgb33_trilinear(lut33: list[tuple[float, float, float]], r: float, g: float, b: float) -> tuple[float, float, float]:
+    rf = max(0.0, min(255.0, r)) * 32.0 / 255.0
+    gf = max(0.0, min(255.0, g)) * 32.0 / 255.0
+    bf = max(0.0, min(255.0, b)) * 32.0 / 255.0
+    r0 = min(31, int(rf))
+    g0 = min(31, int(gf))
+    b0 = min(31, int(bf))
+    dr, dg, db = rf - r0, gf - g0, bf - b0
+
+    def at(ri: int, gi: int, bi: int) -> tuple[float, float, float]:
+        return lut33[(bi * 33 + gi) * 33 + ri]
+
+    c000 = at(r0, g0, b0)
+    c100 = at(r0 + 1, g0, b0)
+    c010 = at(r0, g0 + 1, b0)
+    c110 = at(r0 + 1, g0 + 1, b0)
+    c001 = at(r0, g0, b0 + 1)
+    c101 = at(r0 + 1, g0, b0 + 1)
+    c011 = at(r0, g0 + 1, b0 + 1)
+    c111 = at(r0 + 1, g0 + 1, b0 + 1)
+
+    res = []
+    for ch in range(3):
+        c00 = c000[ch] + (c100[ch] - c000[ch]) * dr
+        c10 = c010[ch] + (c110[ch] - c010[ch]) * dr
+        c01 = c001[ch] + (c101[ch] - c001[ch]) * dr
+        c11 = c011[ch] + (c111[ch] - c011[ch]) * dr
+        c0 = c00 + (c10 - c00) * dg
+        c1 = c01 + (c11 - c01) * dg
+        res.append(c0 + (c1 - c0) * db)
+    return res[0], res[1], res[2]
+
+
+def bake_ycbcr_lut17(lut33: list[tuple[float, float, float]]) -> list[int]:
+    """Bake direct YCbCr->YCbCr 17^3 LUT indexed as [cr_i * 289 + cb_i * 17 + y_i].
+
+    Grid nodes k in 0..16 sit at v = min(k * 16, 255), so v >> 4 gives cell index (0..15)
+    and v & 15 gives Q4 weight (0..15). Neutral chroma (Cb=0, Cr=0 -> u8=128) lands
+    exactly on node 8 with zero fractional weight.
+    """
+    packed: list[int] = []
+    for cr_i in range(17):
+        cr = min(cr_i * 16, 255) - 128.0
+        for cb_i in range(17):
+            cb = min(cb_i * 16, 255) - 128.0
+            for y_i in range(17):
+                y = float(min(y_i * 16, 255))
+                r = y + 1.402 * cr
+                g = y - 0.344136 * cb - 0.714136 * cr
+                b = y + 1.772 * cb
+                ro, go, bo = sample_rgb33_trilinear(lut33, r, g, b)
+                yo = clamp_u8(0.299 * ro + 0.587 * go + 0.114 * bo)
+                cbo = clamp_s8(-0.168736 * ro - 0.331264 * go + 0.5 * bo) + 128
+                cro = clamp_s8(0.5 * ro - 0.418688 * go - 0.081312 * bo) + 128
+                packed.append((yo & 0xFF) | ((cbo & 0xFF) << 8) | ((cro & 0xFF) << 16))
+    assert len(packed) == 17 * 17 * 17
+    return packed
+
+
+def load_beef9_slot_map() -> list[int]:
+    d3 = PROGRAM_BIN.read_bytes()
+    oct_off = OCTANT_TABLE_VA - PROGRAM_BASE_VA
+    slot_map: list[int] = []
+    for b in range(9):
+        for g in range(9):
+            for r in range(9):
+                tnum, idx = struct.unpack_from("<HH", d3, oct_off + (g * 81 + b * 9 + r) * 4)
+                slot_map.append(OCTANT_BASE_OFFSETS[tnum] + idx)
+    assert len(slot_map) == 729 and len(set(slot_map)) == 729 and max(slot_map) == 728
+    return slot_map
+
+
+def fmt_u16_array(name: str, vals: list[int]) -> str:
+    lines = [f"static const uint16_t {name}[{len(vals)}] = {{"]
+    for i in range(0, len(vals), 16):
+        chunk = ", ".join(f"{v}u" for v in vals[i:i + 16])
+        lines.append(f"    {chunk},")
+    lines.append("};")
+    return "\n".join(lines)
+
+
+def fmt_u32_array(name: str, vals: list[int]) -> str:
+    lines = [f"static const uint32_t {name}[{len(vals)}] = {{"]
+    for i in range(0, len(vals), 8):
+        chunk = ", ".join(f"0x{v:06x}u" for v in vals[i:i + 8])
+        lines.append(f"    {chunk},")
+    lines.append("};")
+    return "\n".join(lines)
+
+
+def main() -> None:
+    lut33 = load_film_lut33_rgb()
+    ycbcr17 = bake_ycbcr_lut17(lut33)
+    beef9_map = load_beef9_slot_map()
+    parts = [
+        "// RULES-ACTIVE-GLOBAL",
+        "/* Auto-generated by gen_lut_tables.py — direct YCbCr 17^3 LUT + 0xBEEF 9^3 octant map */",
+        "#ifndef S5_LUT_TABLES_H",
+        "#define S5_LUT_TABLES_H",
+        "#include <stdint.h>",
+        "",
+        fmt_u16_array("beef9_slot_off", beef9_map),
+        "",
+        fmt_u32_array("film_ycbcr_lut17", ycbcr17),
+        "",
+        "#endif",
+        "",
+    ]
+    DEST.write_text("\n".join(parts), encoding="utf-8")
+    print(f"Wrote {DEST} ({DEST.stat().st_size} bytes, YCbCr 17^3={len(ycbcr17)}, 9^3 octant={len(beef9_map)})")
+
+
+if __name__ == "__main__":
+    main()
