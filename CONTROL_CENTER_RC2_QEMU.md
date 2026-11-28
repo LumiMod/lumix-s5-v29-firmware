@@ -1,6 +1,6 @@
 # S5 BASE_LOADER RC2：三项修复与 QEMU 回归
 
-日期：2026-11-28。结论：三项修复已实现，离线回归通过。RC2 是本地候选包，尚未真机验证，未替换 GitHub RC1。
+日期：2026-11-28。结论：三项修复已实现，离线回归通过。RC2 已作为 [GitHub 预发布测试包](https://github.com/LumiMod/lumix-s5-v29-firmware/releases/tag/control-center-input-fix-20261128-rc2) 上传，尚未真机验证；RC1 保留供对照。发布的是原已验证二进制，以下校验值未变。
 
 ## 修复结果
 

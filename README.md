@@ -1,6 +1,6 @@
 # Panasonic Lumix DC-S5 (V2.9 / MC801) 增强定制固件
 
-> **本分支：控制中心 RC2 本地候选版（2026-11-28，ABI 2）**。已修复保存失败退出、方向键误触动作行、实体按键自动加载三项问题，通过 QEMU 与 Unicorn 回归，尚未真机验证。详见 [RC2 修复与验证报告](CONTROL_CENTER_RC2_QEMU.md)；之前的 [RC1 输入修复说明](CONTROL_CENTER_INPUT_FIX.md) 保留用于对照。RC2 配套底座与 SD 模块位于 `build_rc2/`；根目录历史二进制不是本次产物。GitHub RC1 未替换。下文历史特性说明不代表本次重新完成了真机验证。
+> **本分支：控制中心 RC2 预发布版（2026-11-28，ABI 2）**。已修复保存失败退出、方向键误触动作行、实体按键自动加载三项问题，通过 QEMU 与 Unicorn 回归，尚未真机验证。详见 [RC2 修复与验证报告](CONTROL_CENTER_RC2_QEMU.md)；之前的 [RC1 输入修复说明](CONTROL_CENTER_INPUT_FIX.md) 保留用于对照。RC2 配套底座与 SD 模块位于 `build_rc2/`；根目录历史二进制不是本次产物。已发布 [RC2 测试包](https://github.com/LumiMod/lumix-s5-v29-firmware/releases/tag/control-center-input-fix-20261128-rc2)，RC1 保留供对照。RC2 的底座与模块必须配套更新；ALL-I 实机问题尚未确认修复。下文历史特性说明不代表本次重新完成了真机验证。
 
 > **ALL-I 核查更新**：已纠正补丁报告中 C4K、4K 和变形宽银幕的模式编号标注。QEMU 已执行原生菜单检查、录制模式转换和活动编码配置生成，五个 ALL-I 候选条目得到 Intra 配置；尚未用原始 MOV 证明实机输出全 I 帧。C4K 59.94p / HEVC / 200 Mbps 是另一条 LongGOP 配置，不能据此确认 ALL-I 已生效。详见 [ALL-I 与码率核查](ALL_INTRA_AUDIT.md)。
 
