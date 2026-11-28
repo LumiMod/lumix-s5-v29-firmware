@@ -8,7 +8,7 @@
     "ldr_fn_lut_trampoline": "0x070f8309",
     "ldr_lv_style_gate": "0x070f8331",
     "ldr_egl_swap_trampoline": "0x070f8385",
-    "program_sha256": "9cd36e37e3208622b944276f6b11855becaf3567aec0c3918d6d8609576e3030"
+    "program_sha256": "df4435116c385ce9c192ca2ccedbe55bc0f30ab4ef12aba62f5d0cf6eabdb017"
   },
   "07_postboot3": {
     "stub_address": "0x879f7900",

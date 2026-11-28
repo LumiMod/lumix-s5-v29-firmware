@@ -55,8 +55,8 @@
   python3 tools/verify_loader_and_mod.py
   python3 tools/pack_firmware.py --patch-dir ./build_loader --out-bin ./S5___V29_BASE_LOADER.bin --version-bcd 0x0300
   ```
-- **校验值（容器头 `Ver. 3.0 / 0x0300`）**：
-  - `S5___V29_BASE_LOADER.bin`（`90,238,464` bytes，Outer CRC32: `0x23cd640e`）：`0e94f4c3ee7bfd8301d829c0475b62bb519b478bf172d56d191551d35fed53af`
+- **校验值（容器头 `Ver. 3.0 / 0x0300`，内置上下/同级自由刷机补丁 `0x86867D12`）**：
+  - `S5___V29_BASE_LOADER.bin`（`90,238,464` bytes，Outer CRC32: `0x4e2b1103`）：`119592030d275c9570a9dc5e17a0be7198cafcfd0758d141da566769fe984dd8`
   - `S5_MOD.BIN`（`31,880` bytes，Payload CRC32: `0xf53178be`）：`17178455b57057b89d06c52332ca1dd0f6c9b759f66a4d80c43f7d26342b9362`
 
 ### 方式 B：一体化整包（免放 `S5_MOD.BIN`）
@@ -128,8 +128,8 @@ python3 tools/run_qemu_patched.py --patched-dir ./build
 
 ## 五、固件校验值（SHA-256 & CRC32）
 
-- **`S5___V29_ALL_PATCHED.bin`**（`90,238,464` bytes，容器头 `V3.0 / 0x0300`，Outer CRC32: `0x19b32737`）：
-  `ad6586ae4bb5b98d8bd0089b55d1497786b976bdca6e78348c420570553de2fd`
+- **`S5___V29_ALL_PATCHED.bin`**（`90,238,464` bytes，容器头 `V3.0 / 0x0300`，Outer CRC32: `0x81afcb75`）：
+  `bc23c60d906f05b6035aaff1f5a1f9cebabaf88c2dd67b9755e9186f5d2fbb85`
 - **`03_program.bin`**：
   `85e92ca65de3ad7c8318a39a443de533739306a6fdb3608695df582560153ff5`
 - **`07_postboot3.bin`**：

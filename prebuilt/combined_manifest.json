@@ -3,14 +3,14 @@
     "base_patches": {
       "source": "/Users/lixiuqi/相机功能验证/s5_v29_decrypted/03_program.bin",
       "source_sha256": "fc496d62a91f6e9b1b84807183bb805bc546c9105d2938546b58a66ad9d132fe",
-      "output": "/Users/lixiuqi/相机功能验证/s5_v29_patched/03_program.bin",
-      "output_sha256": "62bff3f4d6218066f668d026b28f8a66db4c0a724c925b531502883ba885f378",
+      "output": "/Users/lixiuqi/相机功能验证/lumix-s5-v29-firmware/build/03_program.bin",
+      "output_sha256": "113c3205af8af6d03668e33fdcdcb739d20bbc87cd2135113c82433b6c378a22",
       "size_bytes": 16674816,
       "with_all_i": true,
       "all_modes": true,
       "bitrate_mbps_6k_59k": 300,
       "playback_lut_fix": true,
-      "patches_applied": 61,
+      "patches_applied": 62,
       "patches": [
         {
           "name": "remove_recording_time_limit",
@@ -18,6 +18,13 @@
           "file_offset": "0x5a61b6",
           "old_u16": "0x4628",
           "new_u16": "0x2000"
+        },
+        {
+          "name": "allow_any_version_flash_up_down",
+          "va": "0x86867d12",
+          "file_offset": "0x5e7d12",
+          "old_u16": "0xda0b",
+          "new_u16": "0xbf00"
         },
         {
           "name": "unsigned_skip_ecdsa_keep_sha256",
@@ -452,17 +459,16 @@
       "egl_swap_inline_hook": "0x064c3cda",
       "cc_egl_swap_entry": "0x07102a99"
     },
-    "program_sha256": "85e92ca65de3ad7c8318a39a443de533739306a6fdb3608695df582560153ff5"
+    "program_sha256": "f605d969085f4f9b6fd4d031aab7e281695e5789ec8f3c48db3d3480505a3b6f"
   },
   "07_postboot3": {
     "hook_call": "0x877537a2",
     "payload_address": "0x879f7900",
-    "hook_entry": "0x879f7901",
-    "payload_bytes": 10616,
-    "postboot3_sha256": "7e444669a577d09eb1b4b2d69c32e43802d4bf180f8f3caeac99ae16f268e1d8"
+    "hook_entry": "0x879f85e9",
+    "payload_bytes": 10620,
+    "postboot3_sha256": "9f2691c2e911e608432f7f892273bb792f60dba7fee610fa4d9809eaa0ed5b18"
   },
   "20_osdover": {
-    "source": "/Users/lixiuqi/相机功能验证/s5_v29_decrypted/20_osdover.bin",
     "zh_patch": {
       "offset": "0x876436",
       "old": "像素更新",

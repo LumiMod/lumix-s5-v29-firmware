@@ -40,11 +40,16 @@ GUARDS = (
     (0x870896EC, 0xFFFF, "pal_rom_tpl_sentinel"),
     (0x866AE76E, 0x4208, "playback_lut_tst_r0_r1"),
     (0x866AE772, 0x4811, "playback_lut_ldr_r0_pc"),
+    (0x86867D0A, 0x8BA0, "upd_ver_ldrh_r0_1c"),
+    (0x86867D10, 0x4281, "upd_ver_cmp_r1_r0"),
 )
 
 LIMIT_PATCHES = (
     # mov r0, r5 (0x4628) -> movs r0, #0 (0x2000): return 0 (no recording time cap)
     (0x868261B6, 0x4628, 0x2000, "remove_recording_time_limit"),
+    # bge #0x06867d2c (0xDA0B) -> nop (0xBF00): allow free upgrade, same-version reflash & downgrade
+    # (keeps MC801 model check @ 0x06867D02 and SHA-256/CRC32 intact!)
+    (0x86867D12, 0xDA0B, 0xBF00, "allow_any_version_flash_up_down"),
 )
 
 # Unsigned container path (payload[0] == 0): branch directly to the common
