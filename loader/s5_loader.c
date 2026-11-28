@@ -1,0 +1,269 @@
+// RULES-ACTIVE-GLOBAL
+#include <stdint.h>
+#include "s5_mod_abi.h"
+
+/* Permanent ~1.8 KB resident SD-card module loader linked at 0x070F8000 in 03_program.bin.
+ * - Zero FPU, zero heap, 8-byte AAPCS-aligned trampolines.
+ * - Loads A:\S5_MOD.BIN (fallback B:\S5_MOD.BIN) into RWX RAM @ 0x07100000,
+ *   verifies header + IEEE CRC32, cleans D-Cache, invalidates I-Cache, and calls entry.
+ * - If no S5_MOD.BIN is present (or CRC32 fails), every hook transparently falls back
+ *   to 100% factory stock Panasonic firmware behavior! */
+
+#define FN_KEY_DISPATCH     0x06643681u
+#define FN_ORIG_PIXEL_REF   0x06825F19u
+#define FN_ORIG_LV_STYLE    0x066A07F5u
+
+#define FN_FS_PARSE_PATH    0x06426DA7u
+#define FN_FS_OPEN          0x067DC0D5u
+#define FN_FS_READ          0x06432F01u
+#define FN_FS_CLOSE         0x067DA161u
+#define FS_MODE_READ        0x0401u
+
+typedef void (*orig_key_fn)(uint32_t *ev);
+typedef int  (*orig_lv_style_fn)(uint32_t style);
+typedef uint32_t (*fs_parse_fn)(const char *path, uint32_t *out_drv, const char **out_rel, uint16_t *out_flag);
+typedef uint32_t (*fs_open_fn)(uint32_t drv, uint32_t *out_fd, const char *rel, uint32_t mode);
+typedef uint32_t (*fs_read_fn)(uint32_t fd, void *buf, uint32_t flags, uint32_t len, uint32_t z, uint32_t *out_stat);
+typedef uint32_t (*fs_close_fn)(uint32_t fd, uint32_t flags);
+
+static const char *const MOD_PATHS[2] = { "A:\\S5_MOD.BIN", "B:\\S5_MOD.BIN" };
+
+static void ldr_dcache_range(uint32_t addr, uint32_t bytes, int clean_only) {
+    uint32_t p = addr & ~31u;
+    uint32_t end = (addr + bytes + 31u) & ~31u;
+    __asm__ volatile("dsb sy" ::: "memory");
+    if (clean_only) {
+        for (; p < end; p += 32u)
+            __asm__ volatile("mcr p15, 0, %0, c7, c10, 1" :: "r"(p) : "memory");
+    } else {
+        for (; p < end; p += 32u)
+            __asm__ volatile("mcr p15, 0, %0, c7, c14, 1" :: "r"(p) : "memory");
+    }
+    __asm__ volatile("dsb sy" ::: "memory");
+}
+
+static void ldr_sync_icache(uint32_t addr, uint32_t bytes) {
+    ldr_dcache_range(addr, bytes, 1);
+    uint32_t z = 0u;
+    __asm__ volatile("mcr p15, 0, %0, c7, c5, 0" :: "r"(z) : "memory"); /* ICIALLU */
+    __asm__ volatile("dsb sy\n\tisb" ::: "memory");
+}
+
+static uint32_t ldr_crc32(const uint8_t *buf, uint32_t len) {
+    uint32_t crc = 0xFFFFFFFFu;
+    for (uint32_t i = 0; i < len; ++i) {
+        crc ^= buf[i];
+        for (uint32_t b = 0; b < 8u; ++b)
+            crc = (crc & 1u) ? ((crc >> 1) ^ 0xEDB88320u) : (crc >> 1);
+    }
+    return ~crc;
+}
+
+static volatile S5ModTable *ldr_get_table(void) {
+    volatile S5ModTable *tbl = (volatile S5ModTable *)(uintptr_t)S5_MOD_TABLE_ADDR;
+    if (tbl->magic != S5_MOD_TBL_MAGIC) {
+        volatile uint8_t *p = (volatile uint8_t *)tbl;
+        for (uint32_t i = 0; i < sizeof(S5ModTable); ++i)
+            p[i] = 0u;
+        tbl->abi_version = S5_MOD_ABI_VERSION;
+        __asm__ volatile("dmb sy" ::: "memory");
+        tbl->magic = S5_MOD_TBL_MAGIC;
+        ldr_dcache_range(S5_MOD_TABLE_ADDR, sizeof(S5ModTable), 1);
+    }
+    return tbl;
+}
+
+static uint32_t ldr_fs_read_dma(uint32_t fd, uint8_t *io, uint32_t len) {
+    fs_read_fn p_read = (fs_read_fn)(uintptr_t)FN_FS_READ;
+    ldr_dcache_range((uint32_t)(uintptr_t)io, len, 0);
+    uint32_t stat[2] = { 0u, 0u };
+    if (p_read(fd, io, 0u, len, 0u, stat) != 0u)
+        return 0u;
+    ldr_dcache_range((uint32_t)(uintptr_t)io, len, 0);
+    return stat[1];
+}
+
+static int ldr_try_load_mod(volatile S5ModTable *tbl) {
+    if (tbl->loaded)
+        return 1;
+
+    fs_parse_fn p_parse = (fs_parse_fn)(uintptr_t)FN_FS_PARSE_PATH;
+    fs_open_fn  p_open  = (fs_open_fn)(uintptr_t)FN_FS_OPEN;
+    fs_close_fn p_close = (fs_close_fn)(uintptr_t)FN_FS_CLOSE;
+    uint8_t *io = (uint8_t *)(uintptr_t)S5_LOADER_IO_BUF_ADDR;
+
+    tbl->probed = 1u;
+    tbl->load_err = 1u;
+
+    for (uint8_t d = 0u; d < 2u; ++d) {
+        uint32_t drv = 0u, fd = 0u;
+        const char *rel = 0;
+        uint16_t flag = 0u;
+        if (p_parse(MOD_PATHS[d], &drv, &rel, &flag) != 0u)
+            continue;
+        if (p_open(drv, &fd, rel, FS_MODE_READ) != 0u)
+            continue;
+
+        uint32_t got = ldr_fs_read_dma(fd, io, sizeof(S5ModHeader));
+        if (got != sizeof(S5ModHeader)) {
+            p_close(fd, 0u);
+            tbl->load_err = 2u;
+            return 0;
+        }
+
+        S5ModHeader hdr;
+        uint8_t *hdst = (uint8_t *)&hdr;
+        for (uint32_t i = 0; i < sizeof(S5ModHeader); ++i)
+            hdst[i] = io[i];
+
+        if (hdr.magic != S5_MOD_HDR_MAGIC ||
+            hdr.abi_version != S5_MOD_ABI_VERSION ||
+            hdr.load_addr != S5_MOD_LOAD_ADDR ||
+            hdr.payload_size == 0u ||
+            hdr.payload_size > S5_MOD_MAX_SIZE ||
+            hdr.bss_size > S5_MOD_MAX_SIZE - hdr.payload_size ||
+            hdr.entry_addr < S5_MOD_LOAD_ADDR ||
+            hdr.entry_addr >= S5_MOD_LOAD_ADDR + hdr.payload_size ||
+            !(hdr.entry_addr & 1u)) {
+            p_close(fd, 0u);
+            tbl->load_err = 2u;
+            return 0;
+        }
+
+        uint8_t *dst = (uint8_t *)(uintptr_t)S5_MOD_LOAD_ADDR;
+        uint32_t rem = hdr.payload_size;
+        uint32_t off = 0u;
+        while (rem > 0u) {
+            uint32_t chunk = (rem > 2048u) ? 2048u : rem;
+            uint32_t n = ldr_fs_read_dma(fd, io, chunk);
+            if (n == 0u)
+                break;
+            for (uint32_t i = 0; i < n; ++i)
+                dst[off + i] = io[i];
+            off += n;
+            rem -= n;
+        }
+        p_close(fd, 0u);
+
+        if (off != hdr.payload_size) {
+            tbl->load_err = 4u;
+            return 0;
+        }
+
+        uint32_t crc = ldr_crc32(dst, hdr.payload_size);
+        if (crc != hdr.crc32) {
+            tbl->load_err = 3u;
+            return 0;
+        }
+
+        for (uint32_t i = 0; i < hdr.bss_size; ++i)
+            dst[hdr.payload_size + i] = 0u;
+
+        ldr_sync_icache(S5_MOD_LOAD_ADDR, hdr.payload_size + hdr.bss_size);
+
+        tbl->drive_idx = d;
+        tbl->mod_size = hdr.payload_size;
+        tbl->mod_crc32 = crc;
+        tbl->load_err = 0u;
+
+        s5_mod_entry_fn entry = (s5_mod_entry_fn)(uintptr_t)hdr.entry_addr;
+        entry(tbl);
+
+        __asm__ volatile("dmb sy" ::: "memory");
+        tbl->loaded = 1u;
+        ldr_dcache_range(S5_MOD_TABLE_ADDR, sizeof(S5ModTable), 1);
+        return 1;
+    }
+    return 0;
+}
+
+/* Hook 1: Key Dispatch @ 0x064759C6 */
+void ldr_key_hook(uint32_t *ev) {
+    volatile S5ModTable *tbl = ldr_get_table();
+    if (!tbl->probed && ev && ev[1] == 1u)
+        ldr_try_load_mod(tbl);
+    if (tbl->loaded && tbl->on_key) {
+        tbl->on_key(ev);
+        return;
+    }
+    ((orig_key_fn)(uintptr_t)FN_KEY_DISPATCH)(ev);
+}
+
+/* Hook 2: Setup Menu ID 0x01B5 (像素更新 -> 控制中心) @ 0x068596AE */
+int ldr_setup_menu_handler(void) {
+    volatile S5ModTable *tbl = ldr_get_table();
+    if (!tbl->loaded)
+        ldr_try_load_mod(tbl);
+    if (tbl->loaded && tbl->on_setup_menu)
+        return tbl->on_setup_menu();
+    return 0;
+}
+
+__attribute__((naked)) void ldr_setup_menu_trampoline(void) {
+    __asm__ volatile(
+        "push {r0-r3, r4, lr}\n\t"
+        "bl ldr_setup_menu_handler\n\t"
+        "cmp r0, #0\n\t"
+        "pop {r0-r3, r4, lr}\n\t"
+        "beq 1f\n\t"
+        "ldr pc, =0x068598D1\n\t"  /* pop {r4..r8, lr}; b.w 0x0683291c (commit_ui) */
+        "1:\n\t"
+        "ldr ip, =0x06825F19\n\t"  /* Stock Pixel Refresh fallback when no S5_MOD.BIN */
+        "blx ip\n\t"
+        "ldr pc, =0x068596B3\n\t"
+        ".ltorg\n\t"
+    );
+}
+
+/* Hook 3: Native Fn -> LUT Select @ 0x0686A074 */
+int ldr_fn_lut_handler(void) {
+    volatile S5ModTable *tbl = ldr_get_table();
+    if (!tbl->loaded)
+        ldr_try_load_mod(tbl);
+    if (tbl->loaded && tbl->on_fn_lut)
+        return tbl->on_fn_lut();
+    return 0;
+}
+
+__attribute__((naked)) void ldr_fn_lut_trampoline(void) {
+    __asm__ volatile(
+        "push {r0-r3, r4, lr}\n\t"
+        "bl ldr_fn_lut_handler\n\t"
+        "cmp r0, #0\n\t"
+        "pop {r0-r3, r4, lr}\n\t"
+        "beq 1f\n\t"
+        "ldr pc, =0x0686A0EB\n\t"  /* add sp, #0x1c; pop {r4..fp, lr}; b.w commit_ui */
+        "1:\n\t"
+        "ldr ip, =0x06465A03\n\t"  /* Stock Fn -> LUT Select fallback */
+        "blx ip\n\t"
+        "ldr pc, =0x0686A079\n\t"
+        ".ltorg\n\t"
+    );
+}
+
+/* Hook 4: Live View 3D-LUT Photo Style Gate @ 0x066AE7C4 */
+int ldr_lv_style_gate(uint32_t style) {
+    const volatile S5ModTable *tbl = (const volatile S5ModTable *)(uintptr_t)S5_MOD_TABLE_ADDR;
+    if (tbl->magic == S5_MOD_TBL_MAGIC && tbl->loaded && tbl->on_lv_style_gate)
+        return tbl->on_lv_style_gate(style);
+    return ((orig_lv_style_fn)(uintptr_t)FN_ORIG_LV_STYLE)(style);
+}
+
+/* Hook 5: Inline eglSwapBuffers @ 0x064C3CDA (zero-write fast exit when unloaded) */
+void ldr_egl_swap_overlay(uint32_t dpy, uint32_t surf) {
+    const volatile S5ModTable *tbl = (const volatile S5ModTable *)(uintptr_t)S5_MOD_TABLE_ADDR;
+    if (tbl->magic == S5_MOD_TBL_MAGIC && tbl->loaded && tbl->on_egl_swap)
+        tbl->on_egl_swap(dpy, surf);
+}
+
+__attribute__((naked)) void ldr_egl_swap_trampoline(void) {
+    __asm__ volatile(
+        "push {r0, r1, r2, r3, ip, lr}\n\t"
+        "bl ldr_egl_swap_overlay\n\t"
+        "pop {r0, r1, r2, r3, ip, lr}\n\t"
+        "push.w {r4, r5, r6, r7, r8, lr}\n\t"
+        "ldr ip, =0x064C3CDF\n\t"
+        "bx ip\n\t"
+        ".ltorg\n\t"
+    );
+}

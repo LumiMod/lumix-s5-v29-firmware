@@ -197,21 +197,20 @@ static inline void process_pair_ycbcr9(const uint32_t *p_uv, unsigned y0, unsign
     yp[1] = (uint8_t)(q0 + (((q1 - q0) * u1 + (q2 - q1) * u2 + (q3 - q2) * u3 + 16) >> 5));
 }
 
-int image_hook(uint32_t image_id, unsigned char *description) {
-    int (*get_description)(uint32_t, unsigned char *) =
-        (void *)(uintptr_t)0x87864acdu;
-    int status = get_description(image_id, description);
+#ifndef HOOK_CC_STATE_ADDR
+#define HOOK_CC_STATE_ADDR   0x07108000u
+#endif
+#ifndef HOOK_SD_LUT_BUF_ADDR
+#define HOOK_SD_LUT_BUF_ADDR 0x0710a200u
+#endif
 
-    /* S5 II-style decoupled REAL TIME LUT gate:
-     * - Independent of V-Log View Assist (Monitor) switch (0x08BDC310 is NOT required)
-     * - Default: active in V-Log (0x0C) or My Photo Style 1..10 (0x11..0x1B)
-     * - If S5 Control Center (0x07108000, magic "S5CC") enables lut_all_styles, active in all styles
-     * - Slot 0 (Vlog_709) = OFF / Pure V-Log bypass (zero overhead, untouched pixels)
-     * - Slots 1..4 (SD imported LUT1..LUT4) = Direct-YCbCr 9^3 fast bake */
+int image_hook_body(int status, uint32_t image_id, unsigned char *description) {
+    (void)image_id;
+
     /* Invalidate CcState cache lines so SMP cores always see live Control Center updates */
-    cache_range(0x07108000u, 64u, 0);
-    const volatile uint32_t *cc_hdr = (const volatile uint32_t *)(uintptr_t)0x07108000u;
-    const volatile uint8_t *cc_bytes = (const volatile uint8_t *)(uintptr_t)0x07108000u;
+    cache_range(HOOK_CC_STATE_ADDR, 64u, 0);
+    const volatile uint32_t *cc_hdr = (const volatile uint32_t *)(uintptr_t)HOOK_CC_STATE_ADDR;
+    const volatile uint8_t *cc_bytes = (const volatile uint8_t *)(uintptr_t)HOOK_CC_STATE_ADDR;
     int cc_valid = (cc_hdr[0] == 0x53354343u);
     int all_styles = cc_valid && (cc_bytes[6] != 0u);
     uint8_t photo_style = *(const volatile uint8_t *)(uintptr_t)0x08cc1864u;
@@ -227,10 +226,10 @@ int image_hook(uint32_t image_id, unsigned char *description) {
         return status;
 
     const uint16_t *raw_slot = NULL;
-    /* Priority 1: Active SD-card LUT (1..100) pre-packed into 0x0710A200 by Control Center */
+    /* Priority 1: Active SD-card LUT (1..100) pre-packed into HOOK_SD_LUT_BUF_ADDR by Control Center */
     if (cc_valid && cc_bytes[12] != 0u) {
-        cache_range(0x0710a200u, 2944u, 0);
-        const uint16_t *sd_hdr = (const uint16_t *)(uintptr_t)0x0710a200u;
+        cache_range(HOOK_SD_LUT_BUF_ADDR, 2944u, 0);
+        const uint16_t *sd_hdr = (const uint16_t *)(uintptr_t)HOOK_SD_LUT_BUF_ADDR;
         if (sd_hdr[0] == 0xbeefu && sd_hdr[1] == 1u)
             raw_slot = sd_hdr + 2;
     }
@@ -276,3 +275,12 @@ int image_hook(uint32_t image_id, unsigned char *description) {
     cache_range(c_address, c_stride * height, 1);
     return status;
 }
+
+#ifndef S5_MOD_BUILD
+int image_hook(uint32_t image_id, unsigned char *description) {
+    int (*get_description)(uint32_t, unsigned char *) =
+        (void *)(uintptr_t)0x87864acdu;
+    int status = get_description(image_id, description);
+    return image_hook_body(status, image_id, description);
+}
+#endif

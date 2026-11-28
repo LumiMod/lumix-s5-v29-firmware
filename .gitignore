@@ -4,7 +4,9 @@
 *.pyc
 __pycache__/
 build/
+build_loader/
 qemu_test_run/
+qemu_loader_run/
 .pack-*/
 *.bak
 *.lock

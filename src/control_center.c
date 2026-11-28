@@ -10,10 +10,18 @@
  * Linked at 0x07100000 in 03_program.bin tail cave (low-VA runtime domain).
  * Zero FPU/VFP instructions, zero heap allocation. */
 
+#ifndef CC_STATE_ADDR
 #define CC_STATE_ADDR       0x07108000u  /* 256 B CcState (32B aligned) */
+#endif
+#ifndef CC_LUT_LIST_ADDR
 #define CC_LUT_LIST_ADDR    0x07108100u  /* 100 * 64 B = 6400 B CcLutEntry table */
+#endif
+#ifndef CC_IO_BUF_ADDR
 #define CC_IO_BUF_ADDR      0x07109A00u  /* 2048 B DMA-safe 32B-aligned FS buffer */
+#endif
+#ifndef CC_SD_LUT_BUF_ADDR
 #define CC_SD_LUT_BUF_ADDR  0x0710A200u  /* 2920 B 32B-aligned 0xBEEF 9^3 octant LUT */
+#endif
 
 #define CC_MAGIC            0x53354343u  /* "S5CC" */
 #define CC_CFG_MAGIC        0x46433553u  /* "S5CF" */

@@ -1,0 +1,32 @@
+{
+  "03_program": {
+    "loader_address": "0x070f8000",
+    "loader_bytes": 1064,
+    "table_address": "0x070fc000",
+    "ldr_key_hook": "0x070f8001",
+    "ldr_setup_menu_trampoline": "0x070f82b9",
+    "ldr_fn_lut_trampoline": "0x070f8309",
+    "ldr_lv_style_gate": "0x070f8331",
+    "ldr_egl_swap_trampoline": "0x070f8385",
+    "program_sha256": "9cd36e37e3208622b944276f6b11855becaf3567aec0c3918d6d8609576e3030"
+  },
+  "07_postboot3": {
+    "stub_address": "0x879f7900",
+    "stub_entry": "0x879f7901",
+    "stub_bytes": 80,
+    "postboot3_sha256": "74ca57f436c45d3e00a2504aad60a6269523e9eaf49374159140fcf5d505e979"
+  },
+  "20_osdover": {
+    "sha256": "2181c40dd01ad78cca584a64c2292dcb9f57121d9340fcc963bbf33b276af843"
+  },
+  "s5_mod": {
+    "file": "/Users/lixiuqi/相机功能验证/lumix-s5-v29-firmware/S5_MOD.BIN",
+    "total_bytes": 31880,
+    "load_addr": "0x07100000",
+    "entry_addr": "0x0710323d",
+    "payload_bytes": 31848,
+    "bss_bytes": 5832,
+    "crc32": "0xf53178be",
+    "sha256": "17178455b57057b89d06c52332ca1dd0f6c9b759f66a4d80c43f7d26342b9362"
+  }
+}

@@ -42,7 +42,29 @@
 
 ---
 
-## 二、仓库目录结构
+## 二、两种部署方式（强烈推荐方式 A：魔灯式 SD 卡热插拔）
+
+### 方式 A：极简永固底座 + SD 卡热插拔模块（推荐！）
+- **只需刷一次 NAND**：将 `S5___V29_BASE_LOADER.bin` 改名为 `S5___V29.bin` 刷入相机（机内仅驻留 `1,064 B` 引导器 + `80 B` 拍照桥接桩 + 6K/ALL-I/300M 基础解锁）。
+- **日常升级只拷 SD 卡**：将 **`S5_MOD.BIN`**（仅 `31.1 KB`）拷到 SD 卡根目录（`A:\S5_MOD.BIN` 或 `B:\S5_MOD.BIN`），开机首次按键/打开控制中心即自动校验 CRC32 并热加载进 `0x07100000`（1 MB 专属空间）。
+- **零变砖保障**：拔出 SD 卡或删除 `S5_MOD.BIN` 重启，所有钩子自动回退至 100% 原厂行为；文件损坏时 CRC32 自动拦截拒载。
+- **底座与模块构建验证命令**：
+  ```bash
+  # RULES-ACTIVE-GLOBAL
+  python3 tools/build_loader_and_mod.py --dec-dir ../s5_v29_decrypted
+  python3 tools/verify_loader_and_mod.py
+  python3 tools/pack_firmware.py --patch-dir ./build_loader --out-bin ./S5___V29_BASE_LOADER.bin
+  ```
+- **校验值**：
+  - `S5___V29_BASE_LOADER.bin`（`90,238,464` bytes，Outer CRC32: `0xee8f3952`）：`c4e272b15eab2edb57a636b2fbdd8b9a346a801c50ef7f6a9a88e137d3d6292d`
+  - `S5_MOD.BIN`（`31,880` bytes，Payload CRC32: `0xf53178be`）：`17178455b57057b89d06c52332ca1dd0f6c9b759f66a4d80c43f7d26342b9362`
+
+### 方式 B：一体化整包（免放 `S5_MOD.BIN`）
+- 直接将 `S5___V29_ALL_PATCHED.bin` 改名为 `S5___V29.bin` 刷入，全部功能直接内置于固件中。
+
+---
+
+## 三、仓库目录结构
 
 ```text
 # RULES-ACTIVE-GLOBAL
