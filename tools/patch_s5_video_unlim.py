@@ -4,7 +4,8 @@
 1. Removes the 15/30-minute video recording time limit (LIMIT_ADDRESS 0x868261B6).
 2. Unlocks NTSC (59.94 Hz) MOV high-res modes in wl + rom_tpl:
    - 0x00CC -> 0x00F4 (5.9K 16:9 29.97p HEVC 10-bit)
-   - 0x00CE -> 0x00B7 (C4K 23.98p 150M 4:2:2 10-bit) [or 0x0098 4K 400M ALL-I with --with-all-i]
+   - 0x00CE -> 0x00B7 (3328x2496 anamorphic 23.98p 150M 4:2:2 10-bit)
+     [or 0x0098 C4K 400M ALL-I when the Python API uses with_all_i=True, all_modes=False]
    - 0x00D1 -> 0x00F1 (5.9K 16:9 23.98p HEVC 10-bit)
    - 0x00D2 -> 0x00ED (6K Open Gate 3:2 23.98p HEVC 10-bit)
 3. Unlocks PAL (50.00 Hz) MOV high-res modes in PAL wl + rom_tpl:
@@ -87,7 +88,7 @@ BITRATE_OFFSETS_6K_59K = (
 
 def build_video_patches(with_all_i: bool = False, all_modes: bool = True) -> tuple:
     ce_target = 0x0098 if (with_all_i and not all_modes) else 0x00B7
-    ce_label = "4k24_400m_alli" if ce_target == 0x0098 else "c4k24_150m_10bit"
+    ce_label = "c4k24_400m_alli" if ce_target == 0x0098 else "4ka24_150m_10bit"
     patches = [
         # NTSC wl (0x86F15E88..0x86F15E96)
         (0x86F15E88, 0x00CC, 0x00F4, "ntsc_wl_59k30_lo"),
@@ -119,24 +120,24 @@ def build_video_patches(with_all_i: bool = False, all_modes: bool = True) -> tup
         (0x870896E4, 0x80CF, 0x80EF, "pal_tpl_54k_og25_hi"),
     ]
     if all_modes:
-        # Full safe readout & ALL-I pack (skips 0x00F0 which stalls on record in 59.94 Hz):
-        # 0x009B -> 0x0098 (4K 23.98p 400M 4:2:2 10-bit ALL-I)
-        # 0x009F -> 0x00B8 (C4K 23.98p 400M 4:2:2 10-bit ALL-I)
+        # Experimental readout & ALL-I menu pack (skips 0x00F0 which stalls on record in 59.94 Hz):
+        # 0x009B -> 0x0098 (C4K 4096x2160 23.98p 400M 4:2:2 10-bit ALL-I)
+        # 0x009F -> 0x00B8 (anamorphic 3328x2496 23.98p 400M 4:2:2 10-bit ALL-I)
         # 0x00A1 -> 0x0090 (C4K 29.97p 400M 4:2:2 10-bit ALL-I)
-        # 0x00A5 -> 0x00A9 (4K-A 4:3 23.98p 400M 4:2:2 10-bit ALL-I)
+        # 0x00A5 -> 0x00A9 (4K 3840x2160 23.98p 400M 4:2:2 10-bit ALL-I)
         # 0x00A7 -> 0x00D0 (FHD 23.98p 200M 4:2:2 10-bit ALL-I)
         # 0x00BE -> 0x00EE (6K 3:2 Open Gate 24.00p HEVC 10-bit)
         # 0x00C0 -> 0x00F2 (5.9K 16:9 24.00p HEVC 10-bit)
         patches.extend([
             # NTSC wl
-            (0x86F15E74, 0x009B, 0x0098, "ntsc_wl_4k24_400m_alli_lo"),
-            (0x86F15E76, 0x809B, 0x8098, "ntsc_wl_4k24_400m_alli_hi"),
-            (0x86F15E68, 0x009F, 0x00B8, "ntsc_wl_c4k24_400m_alli_lo"),
-            (0x86F15E6A, 0x809F, 0x80B8, "ntsc_wl_c4k24_400m_alli_hi"),
+            (0x86F15E74, 0x009B, 0x0098, "ntsc_wl_c4k24_400m_alli_lo"),
+            (0x86F15E76, 0x809B, 0x8098, "ntsc_wl_c4k24_400m_alli_hi"),
+            (0x86F15E68, 0x009F, 0x00B8, "ntsc_wl_4ka24_400m_alli_lo"),
+            (0x86F15E6A, 0x809F, 0x80B8, "ntsc_wl_4ka24_400m_alli_hi"),
             (0x86F15E78, 0x00A1, 0x0090, "ntsc_wl_c4k30_400m_alli_lo"),
             (0x86F15E7A, 0x80A1, 0x8090, "ntsc_wl_c4k30_400m_alli_hi"),
-            (0x86F15E6C, 0x00A5, 0x00A9, "ntsc_wl_4ka24_400m_alli_lo"),
-            (0x86F15E6E, 0x80A5, 0x80A9, "ntsc_wl_4ka24_400m_alli_hi"),
+            (0x86F15E6C, 0x00A5, 0x00A9, "ntsc_wl_4k24_400m_alli_lo"),
+            (0x86F15E6E, 0x80A5, 0x80A9, "ntsc_wl_4k24_400m_alli_hi"),
             (0x86F15E70, 0x00A7, 0x00D0, "ntsc_wl_fhd24_200m_alli_lo"),
             (0x86F15E72, 0x80A7, 0x80D0, "ntsc_wl_fhd24_200m_alli_hi"),
             (0x86F15E80, 0x00BE, 0x00EE, "ntsc_wl_6k2400_lo"),
@@ -144,14 +145,14 @@ def build_video_patches(with_all_i: bool = False, all_modes: bool = True) -> tup
             (0x86F15E84, 0x00C0, 0x00F2, "ntsc_wl_59k2400_lo"),
             (0x86F15E86, 0x80C0, 0x80F2, "ntsc_wl_59k2400_hi"),
             # NTSC rom_tpl
-            (0x87089574, 0x009B, 0x0098, "ntsc_tpl_4k24_400m_alli_lo"),
-            (0x8708957C, 0x809B, 0x8098, "ntsc_tpl_4k24_400m_alli_hi"),
-            (0x87089584, 0x009F, 0x00B8, "ntsc_tpl_c4k24_400m_alli_lo"),
-            (0x8708958C, 0x809F, 0x80B8, "ntsc_tpl_c4k24_400m_alli_hi"),
+            (0x87089574, 0x009B, 0x0098, "ntsc_tpl_c4k24_400m_alli_lo"),
+            (0x8708957C, 0x809B, 0x8098, "ntsc_tpl_c4k24_400m_alli_hi"),
+            (0x87089584, 0x009F, 0x00B8, "ntsc_tpl_4ka24_400m_alli_lo"),
+            (0x8708958C, 0x809F, 0x80B8, "ntsc_tpl_4ka24_400m_alli_hi"),
             (0x87089594, 0x00A1, 0x0090, "ntsc_tpl_c4k30_400m_alli_lo"),
             (0x8708959C, 0x80A1, 0x8090, "ntsc_tpl_c4k30_400m_alli_hi"),
-            (0x870895A4, 0x00A5, 0x00A9, "ntsc_tpl_4ka24_400m_alli_lo"),
-            (0x870895AC, 0x80A5, 0x80A9, "ntsc_tpl_4ka24_400m_alli_hi"),
+            (0x870895A4, 0x00A5, 0x00A9, "ntsc_tpl_4k24_400m_alli_lo"),
+            (0x870895AC, 0x80A5, 0x80A9, "ntsc_tpl_4k24_400m_alli_hi"),
             (0x870895C4, 0x00A7, 0x00D0, "ntsc_tpl_fhd24_200m_alli_lo"),
             (0x870895CC, 0x80A7, 0x80D0, "ntsc_tpl_fhd24_200m_alli_hi"),
             (0x870895D4, 0x00BE, 0x00EE, "ntsc_tpl_6k2400_lo"),
@@ -267,7 +268,10 @@ def main() -> None:
     parser.add_argument("--src", type=Path, default=Path("/Users/lixiuqi/相机功能验证/s5_v29_decrypted/03_program.bin"))
     parser.add_argument("--dst", type=Path, default=Path("/Users/lixiuqi/相机功能验证/s5_v29_patched/03_program.bin"))
     parser.add_argument("--report", type=Path, default=Path("/Users/lixiuqi/相机功能验证/s5_v29_patched/patch_report.json"))
-    parser.add_argument("--with-all-i", action="store_true", help="Use 4K 23.98p 400M ALL-I (0x0098) instead of C4K 23.98p 10-bit (0x00B7)")
+    parser.add_argument(
+        "--with-all-i", action="store_true",
+        help="Compatibility flag; this CLI uses the full menu pack, which already includes ALL-I candidates",
+    )
     parser.add_argument("--bitrate-mbps", type=int, default=300, help="Target Mbps for 6K/5.9K modes (default: 300)")
     parser.add_argument("--no-playback-lut-fix", action="store_true", help="Skip playback double-LUT fix at 0x866AE770")
     args = parser.parse_args()
