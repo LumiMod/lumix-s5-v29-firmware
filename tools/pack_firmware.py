@@ -75,11 +75,19 @@ def main() -> None:
     ap.add_argument("--patch-dir", type=Path, default=DEFAULT_PATCH_DIR)
     ap.add_argument("--out-bin", type=Path, default=DEFAULT_OUT_BIN)
     ap.add_argument("--aes-tool", type=Path, default=DEFAULT_TOOL)
+    ap.add_argument("--version-bcd", type=lambda x: int(x, 0), default=0x0300,
+                    help="Container UPD BCD version (default 0x0300 = V3.0 so V2.9 bodies accept S5___V30.bin)")
     args = ap.parse_args()
 
     official = args.official_bin.read_bytes()
     assert sha256(official) == OFFICIAL_SHA256, "Official S5___V29.bin SHA-256 mismatch!"
     pkg = bytearray(official)
+
+    # Bump outer (0x01C/0x01E) and inner (0x2BC/0x2BE) BCD version fields so a stock V2.9 (0x0290) body
+    # recognizes the container as a newer version (e.g. V3.0 = 0x0300 -> S5___V30.bin)
+    for v_off in (0x01C, 0x01E, 0x2BC, 0x2BE):
+        assert struct.unpack_from("<H", official, v_off)[0] == 0x0290, f"Unexpected version @ 0x{v_off:03X}"
+        struct.pack_into("<H", pkg, v_off, args.version_bcd)
 
     targets = list(BASE_TARGETS)
     for idx, filename in OPTIONAL_TARGETS:
@@ -87,7 +95,12 @@ def main() -> None:
             targets.append((idx, filename))
     targets.sort(key=lambda item: item[0])
 
-    report = {"official_sha256": OFFICIAL_SHA256, "output": str(args.out_bin), "components": []}
+    report = {
+        "official_sha256": OFFICIAL_SHA256,
+        "container_version_bcd": f"0x{args.version_bcd:04x}",
+        "output": str(args.out_bin),
+        "components": [],
+    }
 
     with tempfile.TemporaryDirectory(prefix=".pack-", dir=args.patch_dir) as tmp:
         tmp_dir = Path(tmp)

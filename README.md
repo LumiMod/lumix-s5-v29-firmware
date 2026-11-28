@@ -45,7 +45,7 @@
 ## 二、两种部署方式（强烈推荐方式 A：魔灯式 SD 卡热插拔）
 
 ### 方式 A：极简永固底座 + SD 卡热插拔模块（推荐！）
-- **只需刷一次 NAND**：将 `S5___V29_BASE_LOADER.bin` 改名为 `S5___V29.bin` 刷入相机（机内仅驻留 `1,064 B` 引导器 + `80 B` 拍照桥接桩 + 6K/ALL-I/300M 基础解锁）。
+- **只需刷一次 NAND**：将 `S5___V29_BASE_LOADER.bin` 改名为 **`S5___V30.bin`** 拷入 SD 卡根目录刷入相机（容器版本头已升为 **`Ver. 3.0` (`0x0300`)**，可直接被已装 2.9 的机身识别升级；机内运行版本仍保留 `2.9` 方便后续反复升级；机内仅驻留 `1,064 B` 引导器 + `80 B` 拍照桥接桩 + 6K/ALL-I/300M 基础解锁）。
 - **日常升级只拷 SD 卡**：将 **`S5_MOD.BIN`**（仅 `31.1 KB`）拷到 SD 卡根目录（`A:\S5_MOD.BIN` 或 `B:\S5_MOD.BIN`），开机首次按键/打开控制中心即自动校验 CRC32 并热加载进 `0x07100000`（1 MB 专属空间）。
 - **零变砖保障**：拔出 SD 卡或删除 `S5_MOD.BIN` 重启，所有钩子自动回退至 100% 原厂行为；文件损坏时 CRC32 自动拦截拒载。
 - **底座与模块构建验证命令**：
@@ -53,14 +53,14 @@
   # RULES-ACTIVE-GLOBAL
   python3 tools/build_loader_and_mod.py --dec-dir ../s5_v29_decrypted
   python3 tools/verify_loader_and_mod.py
-  python3 tools/pack_firmware.py --patch-dir ./build_loader --out-bin ./S5___V29_BASE_LOADER.bin
+  python3 tools/pack_firmware.py --patch-dir ./build_loader --out-bin ./S5___V29_BASE_LOADER.bin --version-bcd 0x0300
   ```
-- **校验值**：
-  - `S5___V29_BASE_LOADER.bin`（`90,238,464` bytes，Outer CRC32: `0xee8f3952`）：`c4e272b15eab2edb57a636b2fbdd8b9a346a801c50ef7f6a9a88e137d3d6292d`
+- **校验值（容器头 `Ver. 3.0 / 0x0300`）**：
+  - `S5___V29_BASE_LOADER.bin`（`90,238,464` bytes，Outer CRC32: `0x23cd640e`）：`0e94f4c3ee7bfd8301d829c0475b62bb519b478bf172d56d191551d35fed53af`
   - `S5_MOD.BIN`（`31,880` bytes，Payload CRC32: `0xf53178be`）：`17178455b57057b89d06c52332ca1dd0f6c9b759f66a4d80c43f7d26342b9362`
 
 ### 方式 B：一体化整包（免放 `S5_MOD.BIN`）
-- 直接将 `S5___V29_ALL_PATCHED.bin` 改名为 `S5___V29.bin` 刷入，全部功能直接内置于固件中。
+- 直接将 `S5___V29_ALL_PATCHED.bin` 改名为 **`S5___V30.bin`** 拷入 SD 卡根目录刷入（容器头同样已升为 `Ver. 3.0 / 0x0300`），全部功能直接内置于固件中。
 
 ---
 
@@ -92,7 +92,7 @@ lumix-s5-v29-firmware/
 
 ## 三、SD 卡目录放置说明
 
-1. **刷机包放置**：将 `S5___V29_ALL_PATCHED.bin` 拷入相机格式化好的 SD 卡根目录并重命名为 **`S5___V29.bin`**。
+1. **刷机包放置**：将 `S5___V29_BASE_LOADER.bin` 或 `S5___V29_ALL_PATCHED.bin` 拷入相机格式化好的 SD 卡根目录并重命名为 **`S5___V30.bin`**（因容器头已升版至 `Ver. 3.0`，已安装 V2.9 的机身会直接识别为新版本）。
 2. **自定义 100 个 LUT 放置**（插在卡槽 1 `A:` 或卡槽 2 `B:` 均可）：
    - 在 SD 卡根目录新建 `LUT` 文件夹（例如 `SD:\LUT\`）；
    - **方式一（推荐，保留原始名字）**：放入任意 `.cube` / `.vlt` 文件，并新建文本文件 `SD:\LUT\LIST.TXT`，每行写一个文件名（最多 100 行）：
@@ -128,8 +128,8 @@ python3 tools/run_qemu_patched.py --patched-dir ./build
 
 ## 五、固件校验值（SHA-256 & CRC32）
 
-- **`S5___V29_ALL_PATCHED.bin`**（`90,238,464` bytes，Outer CRC32: `0xd4f17a6b`）：
-  `3c4daff36f5dec2f6c67f50d4f4e4a3aa5f9138a97cd4ca349bfe2eae97a56da`
+- **`S5___V29_ALL_PATCHED.bin`**（`90,238,464` bytes，容器头 `V3.0 / 0x0300`，Outer CRC32: `0x19b32737`）：
+  `ad6586ae4bb5b98d8bd0089b55d1497786b976bdca6e78348c420570553de2fd`
 - **`03_program.bin`**：
   `85e92ca65de3ad7c8318a39a443de533739306a6fdb3608695df582560153ff5`
 - **`07_postboot3.bin`**：
