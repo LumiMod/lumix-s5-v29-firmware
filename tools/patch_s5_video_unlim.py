@@ -54,16 +54,17 @@ LIMIT_PATCHES = (
     # UI version menu check (0x0681E9A2 & 0x0681E9DE) + UPD header check (0x06867D12):
     # allow upgrade, same-version reflash & downgrade while preserving MC801 model & floor > 0 checks
     (0x8681E9A2, 0xD100, 0xBF00, "ui_allow_any_version_button"),
-    (0x8681E9DE, 0xD009, 0xE009, "ui_allow_same_subversion"),
+    # 0x0681E9DE: beq #0x0681e9f4 (0xD009) -> b #0x0681e9f6 (0xE00A: movs r0, #1; pop)
+    # Fixes sub-firmware/lens update check returning 0 when [0x0631801C] == 0.
+    (0x8681E9DE, 0xD009, 0xE00A, "ui_allow_same_subversion"),
     (0x86867D12, 0xDA0B, 0xBF00, "allow_any_version_flash_up_down"),
 )
 
-# Container component-table dispatch @ 0x868C704E & 0x868C70A4:
+# Container component-table dispatch @ 0x868C704E:
 # Jumps directly to 0x868C7098 (component parser) with [sp,#0xF8] == 1 so per-component
 # SHA-256 (0x868C71B4) and outer CRC32 remain enforced for all MC801 containers.
 UNSIGNED_ECDSA_SKIP_PATCHES = (
     (0x868C704E, 0xD021, 0xE023, "pkg_dispatch_to_component_sha256"),
-    (0x868C70A4, 0xF899, 0xE7F8, "unsigned_skip_ecdsa_keep_sha256"),
 )
 
 PLAYBACK_LUT_PATCHES = (

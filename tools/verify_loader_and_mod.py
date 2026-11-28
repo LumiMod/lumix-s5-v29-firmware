@@ -208,10 +208,10 @@ def main() -> None:
     # --- Verify all updater version & SHA-256 dispatch patches in 03_program.bin ---
     for va, exp in (
         (0x8681E9A2, 0xBF00),
-        (0x8681E9DE, 0xE009),
+        (0x8681E9DE, 0xE00A),
         (0x86867D12, 0xBF00),
         (0x868C704E, 0xE023),
-        (0x868C70A4, 0xE7F8),
+        (0x868C70A4, 0xF899),
     ):
         got = struct.unpack_from("<H", prog, va - 0x86280000)[0]
         assert got == exp, f"Patch check failed @ 0x{va:08X}: got 0x{got:04X}, expected 0x{exp:04X}"
