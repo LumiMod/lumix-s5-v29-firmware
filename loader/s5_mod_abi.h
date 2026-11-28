@@ -19,7 +19,7 @@
 
 #define S5_MOD_HDR_MAGIC        0x444D3553u  /* "S5MD" */
 #define S5_MOD_TBL_MAGIC        0x544D3553u  /* "S5MT" */
-#define S5_MOD_ABI_VERSION      1u
+#define S5_MOD_ABI_VERSION      2u
 
 typedef void (*s5_on_key_fn)(uint32_t *ev);
 typedef void (*s5_on_egl_swap_fn)(uint32_t dpy, uint32_t surf);
@@ -27,6 +27,7 @@ typedef int  (*s5_on_setup_menu_fn)(void);
 typedef int  (*s5_on_fn_lut_fn)(void);
 typedef int  (*s5_on_lv_style_gate_fn)(uint32_t style);
 typedef int  (*s5_on_jpeg_image_fn)(int status, uint32_t image_id, unsigned char *description);
+typedef int  (*s5_on_ui_event_fn)(uint32_t event, uint32_t param, uint32_t extra);
 
 /* Resident dispatch table @ 0x070FC000 (shared by s5_loader, pb3_stub, and S5_MOD.BIN). */
 typedef struct {
@@ -44,12 +45,15 @@ typedef struct {
     s5_on_fn_lut_fn        on_fn_lut;        /* +0x20: return 1 if handled, 0 for stock fallback */
     s5_on_lv_style_gate_fn on_lv_style_gate; /* +0x24 */
     s5_on_jpeg_image_fn    on_jpeg_image;    /* +0x28 */
+    s5_on_ui_event_fn      on_ui_event;      /* +0x2C: 1 consumes event, 0 passes through */
 } S5ModTable;
+
+_Static_assert(sizeof(S5ModTable) <= 0x40, "Dispatch table overlaps loader lock");
 
 /* 32-byte header at offset 0 of A:\S5_MOD.BIN / B:\S5_MOD.BIN */
 typedef struct {
     uint32_t magic;        /* S5_MOD_HDR_MAGIC ("S5MD") */
-    uint32_t abi_version;  /* S5_MOD_ABI_VERSION (1) */
+    uint32_t abi_version;  /* S5_MOD_ABI_VERSION; base and SD module must match */
     uint32_t load_addr;    /* must equal S5_MOD_LOAD_ADDR (0x07100000) */
     uint32_t entry_addr;   /* Thumb address (|1) of s5_mod_main(S5ModTable *tbl) */
     uint32_t payload_size; /* bytes immediately following this 32B header */

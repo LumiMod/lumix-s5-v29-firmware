@@ -5,6 +5,7 @@
 __pycache__/
 build/
 build_loader/
+build_input_fix/
 qemu_test_run/
 qemu_loader_run/
 .pack-*/

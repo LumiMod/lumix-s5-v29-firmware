@@ -71,6 +71,7 @@
 #define VG_SCISSORING       0x1102u
 #define VG_CLEAR_COLOR      0x1121u
 
+/* Software-key indices, NOT native GUI key codes. */
 #define KEY_UP              3u
 #define KEY_DOWN            4u
 #define KEY_LEFT            5u
@@ -1165,6 +1166,67 @@ void cc_key_hook(uint32_t *ev) {
     }
 }
 
+#ifdef S5_MOD_BUILD
+/* Native event 0x0F000002 packs key in low 16 bits, action in high 16:
+ * 0=press, 1=repeat, 2=release. Firmware 0x0663EB5A maps raw left/right/up/down
+ * to GUI 3/4/5/6 (software indices are 5/6/3/4). Bank +0x24 joystick input
+ * uses the same GUI codes, or 0x5E..0x61 in the native special UI mode.
+ * Preserve native raw-state processing; consume only the resulting UI input.
+ */
+static uint32_t cc_captured_gui_keys[4];
+
+int cc_ui_event_hook(uint32_t event, uint32_t param, uint32_t extra) {
+    (void)extra;
+    volatile CcState *st = cc_get_state();
+    if (event == 0x0F000010u)
+        return st->visible != CC_VIS_OFF; /* Native auxiliary input; no background action. */
+    if (event != 0x0F000002u)
+        return 0; /* Redraw, timers and lifecycle events must keep flowing. */
+
+    uint32_t gui_key = param & 0xFFFFu;
+    uint32_t action = param >> 16;
+    uint32_t mask = 1u << (gui_key & 31u);
+    uint32_t *captured = gui_key < 128u ? &cc_captured_gui_keys[gui_key >> 5] : 0;
+    if (st->visible == CC_VIS_OFF) {
+        /* A new press belongs to stock UI. Some native keys emit no release,
+         * so never leave a key blocked across a subsequent distinct press. */
+        if (action == 0u) {
+            if (captured) *captured &= ~mask;
+            return 0;
+        }
+        if (captured && (*captured & mask)) {
+            if (action == 2u) *captured &= ~mask;
+            return 1; /* Consume the closing press's repeat/release tail. */
+        }
+        return 0;
+    }
+
+    if (captured) {
+        if (action == 2u) *captured &= ~mask;
+        else *captured |= mask;
+    }
+    if (action > 1u)
+        return 1;
+
+    uint32_t key;
+    switch (gui_key) {
+    case 3u: case 0x5Eu: key = KEY_LEFT; break;
+    case 4u: case 0x5Fu: key = KEY_RIGHT; break;
+    case 5u: case 0x60u: key = KEY_UP; break;
+    case 6u: case 0x61u: key = KEY_DOWN; break;
+    case 7u: case 0x48u: key = KEY_CENTER; break;
+    case 8u: case 10u: key = KEY_PLAY; break; /* Playback or Delete/Back closes only. */
+    default: return 1; /* Other keys cannot operate the menu under the panel. */
+    }
+    if (action == 1u && key != KEY_LEFT && key != KEY_RIGHT && key != KEY_UP && key != KEY_DOWN)
+        return 1; /* Holding confirm/exit must not repeatedly activate items. */
+
+    uint32_t ev[2] = { key, 1u };
+    cc_key_hook(ev); /* Shared panel actions, with explicitly translated semantics. */
+    return 1;
+}
+#endif
+
 static void cc_rect(int32_t surf_h, int32_t x, int32_t y_top, int32_t w, int32_t h, const uint32_t *col) {
     if (w <= 0 || h <= 0)
         return;
@@ -1381,7 +1443,7 @@ static void cc_render_overlay(volatile CcState *st, int32_t surf_w, int32_t surf
     }
 
     cc_rect(surf_h, px + 18, py + ph - 52, pw - 36, 2, COL_BORDER);
-    cc_text(surf_h, px + 36, py + ph - 38, 1, "上下:选择  左右:切换  SET:+10/确认  Q/回放:退出", COL_MUTED);
+    cc_text(surf_h, px + 36, py + ph - 38, 1, "上下:选择  左右:切换  SET:+10/确认  回放:退出", COL_MUTED);
 }
 
 static void cc_format_lut_name(volatile CcState *st, int idx, char *out, uint32_t max_len) {
@@ -1453,7 +1515,7 @@ static void cc_render_lut_bar(volatile CcState *st, int32_t surf_w, int32_t surf
     cc_rect(surf_h, rx, cy + 3, side_w, ch - 6, COL_ROW_ALT);
     cc_text(surf_h, rx + 10, cy + 10, 1, next_s, COL_MUTED);
 
-    cc_text(surf_h, bx + 18, by + bh - 30, 1, "左右:实时切换  上下:+-10  SET/Q:确认退出", COL_MUTED);
+    cc_text(surf_h, bx + 18, by + bh - 30, 1, "左右:实时切换  上下:+-10  SET/回放:确认退出", COL_MUTED);
 }
 
 void cc_egl_swap_overlay(uint32_t dpy, uint32_t surf) {

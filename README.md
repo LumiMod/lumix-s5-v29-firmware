@@ -1,5 +1,7 @@
 # Panasonic Lumix DC-S5 (V2.9 / MC801) 增强定制固件
 
+> **本分支：控制中心实体按键修复候选版（2026-11-28，ABI 2）**。已完成离线输入回归和打包回读，尚未真机验证。必须配套更新底座与 SD 模块，详见 [修复说明](CONTROL_CENTER_INPUT_FIX.md)。根目录的历史 `.bin` / `S5_MOD.BIN` 未替换；新文件生成在 `build_input_fix/`。下文历史特性说明不代表本次重新完成了真机验证。
+
 面向松下 Lumix DC-S5 一代（固件 V2.9，`MC801`）的全功能定制增强固件工程，集成 **无时长限制高规格录制解锁**、**S5II 风格底部实时 LUT 快捷切换条**、**独立中文 OpenVG 自定义控制中心**、**SD 卡 100 个 `.CUBE` / `.VLT` 直读解析** 与 **极速 Direct-YCbCr 照片实时 LUT 直出**。
 
 ![S5II 风格底部实时 LUT 快捷条](assets/lut_bar_preview.png)

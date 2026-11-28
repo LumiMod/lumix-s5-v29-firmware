@@ -16,7 +16,7 @@ from pathlib import Path
 from unicorn import Uc, UC_ARCH_ARM, UC_MODE_ARM, UC_HOOK_CODE
 from unicorn.arm_const import (
     UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3,
-    UC_ARM_REG_R4, UC_ARM_REG_R8, UC_ARM_REG_LR, UC_ARM_REG_SP,
+    UC_ARM_REG_R4, UC_ARM_REG_R8, UC_ARM_REG_LR, UC_ARM_REG_SP, UC_ARM_REG_PC,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -165,6 +165,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Verify S5 Base Loader + SD S5_MOD.BIN in Unicorn")
     ap.add_argument("--build-dir", type=Path, default=REPO_ROOT / "build_loader")
     ap.add_argument("--mod-bin", type=Path, default=REPO_ROOT / "S5_MOD.BIN")
+    ap.add_argument("--skip-jpeg", action="store_true", help="Run loader/SD/LUT/OSD checks only")
     args = ap.parse_args()
 
     prog = (args.build_dir / "03_program.bin").read_bytes()
@@ -182,7 +183,8 @@ def main() -> None:
         u.reg_write(UC_ARM_REG_SP, 0x0A002FF0)
         u.reg_write(UC_ARM_REG_R0, 0x0A003000)
         u.reg_write(UC_ARM_REG_LR, RET_TRAP | 1)
-        u.emu_start(ldr_key, RET_TRAP, count=4000000)
+        u.emu_start(ldr_key, RET_TRAP, count=8000000)
+        assert u.reg_read(UC_ARM_REG_PC) == RET_TRAP, "Loader/software-key call did not return"
 
     send_key(uc, 3, 1)
     assert logs["orig_key"] == [(3, 1)]
@@ -255,12 +257,19 @@ def main() -> None:
     # Click Setup -> 控制中心 -> opens Control Center (visible == 1 @ 0x07200000 + 4)
     uc_c.mem_write(0x0A002FD8, struct.pack("<6I", 0x11, 0x22, 0x33, 0x44, 0x55, RET_C | 1))
     uc_c.reg_write(UC_ARM_REG_SP, 0x0A002FD8)
-    uc_c.emu_start(0x068596AE | 1, RET_C, count=4000000)
+    uc_c.emu_start(0x068596AE | 1, RET_C, count=8000000)
+    assert uc_c.reg_read(UC_ARM_REG_PC) == RET_C, "Setup menu call did not return"
     assert uc_c.mem_read(0x07200000 + 4, 1)[0] == 1, "Hot-loaded Control Center did not open!"
     assert logs_c["commit_ui"] >= 1
 
-    # Press RIGHT -> loads SD01 Kodak2383.cube into 0x07202200 & syncs Live View ISP!
-    send_key(uc_c, 6, 1)
+    # GUI RIGHT=4/action=0; software KEY_RIGHT=6/action=1 is a different ABI.
+    # Actual raw-state -> GUI routing is covered by verify_native_input.py.
+    uc_c.reg_write(UC_ARM_REG_SP, 0x0A002FF0)
+    uc_c.reg_write(UC_ARM_REG_R0, 4)
+    uc_c.reg_write(UC_ARM_REG_R1, 0)
+    uc_c.reg_write(UC_ARM_REG_LR, RET_C | 1)
+    uc_c.emu_start(0x066BDDC8 | 1, RET_C, count=20000000)
+    assert uc_c.reg_read(UC_ARM_REG_PC) == RET_C, "GUI input did not return"
     assert uc_c.mem_read(0x07200000 + 12, 1)[0] == 1
     assert struct.unpack("<I", uc_c.mem_read(0x08A9D47C + 4, 4))[0] == 0x07202200
     assert logs_c["lv_apply"][-1] == (1, 1, 1)
@@ -271,8 +280,13 @@ def main() -> None:
     uc_c.reg_write(UC_ARM_REG_R1, 2)
     uc_c.reg_write(UC_ARM_REG_LR, RET_C | 1)
     uc_c.emu_start(0x064C3CDA | 1, RET_C, count=2000000)
+    assert uc_c.reg_read(UC_ARM_REG_PC) == RET_C, "Overlay renderer did not return"
     assert logs_c["clear_ops"] > 200
     print(f"PASS Scenario C (Hot-loaded S5_MOD.BIN): Control Center + SD LUT + Live View ISP + OpenVG ({logs_c['clear_ops']} ops)")
+
+    if args.skip_jpeg:
+        print("SKIP Scenario D: JPEG pipeline is outside this input regression")
+        return
 
     # Scenario D: Call 07_postboot3.bin @ 0x877537A2 -> pb3_image_bridge -> S5ModTable -> S5_MOD.BIN JPEG bake!
     desc = 0x8E000000
@@ -291,6 +305,7 @@ def main() -> None:
     uc_c.reg_write(UC_ARM_REG_R1, desc)
     uc_c.reg_write(UC_ARM_REG_LR, RET_C | 1)
     uc_c.emu_start(0x877537A2 | 1, 0x877537A6, count=12000000)
+    assert uc_c.reg_read(UC_ARM_REG_PC) == 0x877537A6, "JPEG execution did not finish; partial pixels are not a passing test"
     y_out = list(uc_c.mem_read(0x90000000, 8))
     assert 150 <= y_out[0] <= 160 and len(set(y_out)) == 1, f"Cross-domain JPEG bake failed: {y_out}"
     print(f"PASS Scenario D (Cross-domain 07_postboot3 -> S5_MOD.BIN JPEG bake): Y={y_out[:4]}")

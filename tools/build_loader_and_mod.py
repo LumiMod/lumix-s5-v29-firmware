@@ -55,7 +55,9 @@ MOD_STATE_CLEAR_SIZE = 0x4000
 PB3_STUB_CAVE = 0x879F7900
 
 S5_MOD_HDR_MAGIC = 0x444D3553  # "S5MD"
-S5_MOD_ABI_VERSION = 1
+S5_MOD_ABI_VERSION = 2
+UI_EVENT_ENTRY_LOW = 0x066BEEA6
+UI_EVENT_ORIG_PROLOGUE = bytes.fromhex("2de9f041")  # push.w {r4-r8,lr}
 
 DEFAULT_DEC_DIR = REPO_ROOT.parent / "s5_v29_decrypted"
 DEFAULT_OUT_DIR = REPO_ROOT / "build_loader"
@@ -177,6 +179,10 @@ def build_base_program(dec_dir: Path, out_dir: Path) -> dict:
     assert prog[key_off:key_off + 4] == make_bl(KEY_DISPATCH_LOW, KEY_DISPATCH_ORIG_LOW)
     prog[key_off:key_off + 4] = make_bl(KEY_DISPATCH_LOW, syms["ldr_key_hook"] & ~1)
 
+    ui_off = UI_EVENT_ENTRY_LOW - PROG_BASE_LOW
+    assert prog[ui_off:ui_off + 4] == UI_EVENT_ORIG_PROLOGUE
+    prog[ui_off:ui_off + 4] = make_bw(UI_EVENT_ENTRY_LOW, syms["ldr_ui_event_trampoline"] & ~1)
+
     pr_off = SETUP_PIXEL_REFRESH_LOW - PROG_BASE_LOW
     assert prog[pr_off:pr_off + 4] == make_bl(SETUP_PIXEL_REFRESH_LOW, SETUP_PIXEL_REFRESH_ORIG_BL)
     prog[pr_off:pr_off + 4] = make_bw(SETUP_PIXEL_REFRESH_LOW, syms["ldr_setup_menu_trampoline"] & ~1)
@@ -209,6 +215,8 @@ def build_base_program(dec_dir: Path, out_dir: Path) -> dict:
         "loader_bytes": len(payload),
         "table_address": f"0x{LOADER_TABLE_LOW:08x}",
         "ldr_key_hook": f"0x{syms['ldr_key_hook']:08x}",
+        "ui_event_entry": f"0x{UI_EVENT_ENTRY_LOW:08x}",
+        "ldr_ui_event_trampoline": f"0x{syms['ldr_ui_event_trampoline']:08x}",
         "ldr_setup_menu_trampoline": f"0x{syms['ldr_setup_menu_trampoline']:08x}",
         "ldr_fn_lut_trampoline": f"0x{syms['ldr_fn_lut_trampoline']:08x}",
         "ldr_lv_style_gate": f"0x{syms['ldr_lv_style_gate']:08x}",
@@ -279,6 +287,7 @@ def build_sd_mod(out_dir: Path, mod_out: Path) -> dict:
     mod_out.write_bytes(mod_blob)
     return {
         "file": str(mod_out),
+        "abi_version": S5_MOD_ABI_VERSION,
         "total_bytes": len(mod_blob),
         "load_addr": f"0x{MOD_LOAD_ADDR:08x}",
         "entry_addr": f"0x{entry_addr:08x}",

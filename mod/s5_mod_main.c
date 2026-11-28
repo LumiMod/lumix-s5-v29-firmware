@@ -27,10 +27,13 @@ void s5_mod_main(volatile S5ModTable *tbl) {
     volatile CcState *st = cc_get_state();
     cc_boot_autoload_once(st);
 
-    tbl->on_key           = cc_key_hook;
+    /* Let software keys run through the native translator too. Capturing both
+     * here and at on_ui_event would bypass state bookkeeping or handle twice. */
+    tbl->on_key           = 0;
     tbl->on_egl_swap      = cc_egl_swap_overlay;
     tbl->on_setup_menu    = mod_on_setup_menu;
     tbl->on_fn_lut        = cc_fn_lut_select_handler;
     tbl->on_lv_style_gate = cc_lv_style_gate;
     tbl->on_jpeg_image    = image_hook_body;
+    tbl->on_ui_event      = cc_ui_event_hook;
 }

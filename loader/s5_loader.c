@@ -199,7 +199,7 @@ static int ldr_try_load_mod(volatile S5ModTable *tbl) {
     return 0;
 }
 
-/* Hook 1: Key Dispatch @ 0x064759C6 */
+/* Software-key message 0x11F002 only; physical input uses 0x11F001 instead. */
 void ldr_key_hook(uint32_t *ev) {
     volatile S5ModTable *tbl = ldr_get_table();
     if (!tbl->probed && ev && ev[1] == 1u)
@@ -209,6 +209,34 @@ void ldr_key_hook(uint32_t *ev) {
         return;
     }
     ((orig_key_fn)(uintptr_t)FN_KEY_DISPATCH)(ev);
+}
+
+/* Common native UI event entry. Do not probe SD here: unrelated UI events and
+ * the module's own initialization can re-enter this dispatcher. Setup/Fn and
+ * the existing software-key hook retain their explicit loading paths. */
+int ldr_ui_event_handler(uint32_t event, uint32_t param, uint32_t extra) {
+    volatile S5ModTable *tbl = ldr_get_table();
+    if (tbl->loaded && tbl->abi_version == S5_MOD_ABI_VERSION && tbl->on_ui_event)
+        return tbl->on_ui_event(event, param, extra);
+    return 0;
+}
+
+/* 0x066BEEA6: replace push.w {r4-r8,lr}, replay it on pass-through.
+ * Preserve all arguments and the caller LR; the C callback uses an 8-byte
+ * aligned stack. No runtime code writes or instruction-cache race. */
+__attribute__((naked)) void ldr_ui_event_trampoline(void) {
+    __asm__ volatile(
+        "push {r0-r3, ip, lr}\n\t"
+        "bl ldr_ui_event_handler\n\t"
+        "cmp r0, #0\n\t"
+        "pop {r0-r3, ip, lr}\n\t"
+        "beq 1f\n\t"
+        "bx lr\n\t"
+        "1:\n\t"
+        "push.w {r4-r8, lr}\n\t"
+        "ldr pc, =0x066BEEAB\n\t"
+        ".ltorg\n\t"
+    );
 }
 
 /* Hook 2: Setup Menu ID 0x01B5 (像素更新 -> 控制中心) @ 0x068596AE */
