@@ -52,7 +52,7 @@
 ### 第 0 步：准备物品与文件
 * **满电原厂电池**（建议 ≥ 80%）、**一根可传数据的 USB-C 线**、**一张 SD 卡**（只需一张卡即可）。
 * 准备好以下文件：
-  1. **RAM 取消验签软件**：[**LumiMod/s5-update-bypass**](https://github.com/LumiMod/s5-update-bypass)（[Release v0.1.0 直接下载](https://github.com/LumiMod/s5-update-bypass/releases/tag/v0.1.0)，含 macOS `S5UpdateBypass.app` 与 Windows `S5UpdateBypass.exe`）；
+  1. **RAM 取消验签软件**：[**LumiMod/s5-update-bypass**](https://github.com/LumiMod/s5-update-bypass)（[最新 Release 直接下载](https://github.com/LumiMod/s5-update-bypass/releases/latest)，含 macOS `S5UpdateBypass.app` 与 Windows `S5UpdateBypass.exe`）；
   2. **刷机包**（二选一，强烈推荐 **方式 A**）：
      - 方式 A（SD 卡热插拔底座）：`S5___V29_BASE_LOADER.bin` + `S5_MOD.BIN`
      - 方式 B（一体化整包）：`S5___V29_ALL_PATCHED.bin`
@@ -71,7 +71,7 @@
 1. 将机身**左肩驱动模式拨盘**拨到 **单拍** 档位；
 2. 同时按住机身背面 **`AF-ON` + `PLAY（回放 ▶）`** 不松手，拨动电源开关开机，进入 **通道 3：USB 服务模式**，通电后松开按键；
 3. 用 USB-C 线连接电脑，确认系统识别到松下服务模式设备 **`04DA:2370`**；
-4. 打开 [**S5UpdateBypass**](https://github.com/LumiMod/s5-update-bypass/releases/tag/v0.1.0)（仓库：[LumiMod/s5-update-bypass](https://github.com/LumiMod/s5-update-bypass)；Windows 端首次需用 Zadig 将 `04DA:2370` 绑定为 WinUSB；macOS 首次被拦截可执行 `xattr -dr com.apple.quarantine /Applications/S5UpdateBypass.app`）：
+4. 打开 [**S5UpdateBypass**](https://github.com/LumiMod/s5-update-bypass/releases/latest)（仓库：[LumiMod/s5-update-bypass](https://github.com/LumiMod/s5-update-bypass)；Windows 端首次需用 Zadig 将 `04DA:2370` 绑定为 WinUSB；macOS 首次被拦截可执行 `xattr -dr com.apple.quarantine /Applications/S5UpdateBypass.app`）：
    - 点击 **连接相机**，确认相机状态显示 **`已连接`**；
    - 查看状态栏确认 `layout = V2.9`、`code = 0xD021`、`switch = 0x0000`（对应物理地址 **`0x8631801A`**）；
    - 模式保持默认选中：**`彻底关闭（官方开关，ECDSA + SHA 都跳过）`**（`full` 模式，只写数据内存、不碰指令缓存，最稳；**完全不写 NAND，0 变砖风险**）；
