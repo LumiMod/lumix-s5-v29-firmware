@@ -40,27 +40,29 @@ GUARDS = (
     (0x870896EC, 0xFFFF, "pal_rom_tpl_sentinel"),
     (0x866AE76E, 0x4208, "playback_lut_tst_r0_r1"),
     (0x866AE772, 0x4811, "playback_lut_ldr_r0_pc"),
+    (0x8681E9A0, 0x2901, "ui_ver_flag_cmp_r1_1"),
+    (0x8681E9DC, 0x2801, "ui_subver_flag_cmp_r0_1"),
     (0x86867D0A, 0x8BA0, "upd_ver_ldrh_r0_1c"),
     (0x86867D10, 0x4281, "upd_ver_cmp_r1_r0"),
+    (0x868C704A, 0x8B40, "pkg_tbl_flag_ldrh_1a"),
+    (0x868C704C, 0x2801, "pkg_tbl_flag_cmp_1"),
 )
 
 LIMIT_PATCHES = (
     # mov r0, r5 (0x4628) -> movs r0, #0 (0x2000): return 0 (no recording time cap)
     (0x868261B6, 0x4628, 0x2000, "remove_recording_time_limit"),
-    # bge #0x06867d2c (0xDA0B) -> nop (0xBF00): allow free upgrade, same-version reflash & downgrade
-    # (keeps MC801 model check @ 0x06867D02 and SHA-256/CRC32 intact!)
+    # UI version menu check (0x0681E9A2 & 0x0681E9DE) + UPD header check (0x06867D12):
+    # allow upgrade, same-version reflash & downgrade while preserving MC801 model & floor > 0 checks
+    (0x8681E9A2, 0xD100, 0xBF00, "ui_allow_any_version_button"),
+    (0x8681E9DE, 0xD009, 0xE009, "ui_allow_same_subversion"),
     (0x86867D12, 0xDA0B, 0xBF00, "allow_any_version_flash_up_down"),
 )
 
-# Unsigned container path (payload[0] == 0): branch directly to the common
-# component-table parser at 0x868C7098, skipping the ECDSA block at
-# 0x868C7054..0x868C7092 and, crucially, skipping 0x868C7094 which clears
-# verify_enabled ([sp,#0xF8]).  The per-component SHA-256 check at
-# 0x868C71B4 therefore still runs; the outer CRC32 path is untouched.
-#
-# Original 0x868C70A4: 99 F8  (ldrb.w r0,[sb,#0x68])
-# Patched  0x868C70A4: F8 E7  (b #0x868C7098)
+# Container component-table dispatch @ 0x868C704E & 0x868C70A4:
+# Jumps directly to 0x868C7098 (component parser) with [sp,#0xF8] == 1 so per-component
+# SHA-256 (0x868C71B4) and outer CRC32 remain enforced for all MC801 containers.
 UNSIGNED_ECDSA_SKIP_PATCHES = (
+    (0x868C704E, 0xD021, 0xE023, "pkg_dispatch_to_component_sha256"),
     (0x868C70A4, 0xF899, 0xE7F8, "unsigned_skip_ecdsa_keep_sha256"),
 )
 

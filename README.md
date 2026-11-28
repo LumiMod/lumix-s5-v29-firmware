@@ -34,19 +34,20 @@
    - 拦截 `0x877537A2` JPEG 编码前 NV16 描述符获取调用，采用直接 `YCbCr -> YCbCr` 9³ 四面体插值 + ARMv7 SWAR 双通道乘加融合，单像素仅 **~52.3 条指令**，覆盖全画幅 `3:2 / 4:3 / 16:9 / 1:1 / 65:24 XPan` 全部静态比例，缩略图与视频帧零开销旁路。
    - 配套修补 `0x866AE770` 回放防双重套 LUT。
 
-4. **视频时长解除、13 项高规格 / ALL-I 解锁与 300 Mbps 升码率（`patch_s5_video_unlim.py`）**
+4. **视频时长解除、13 项高规格 / ALL-I 解锁、300 Mbps 升码率与上下自由刷机（`patch_s5_video_unlim.py`）**
    - 解除 30 分钟录像时长上限（`0x868261B6`）；
    - 解锁 6K Open Gate、5.9K、5.4K OG、4K/C4K 400M 4:2:2 10-bit ALL-I、FHD 200M ALL-I 等 13 项安全规格；
    - 6K / 5.9K 码率由 200 Mbps 提升至 **300 Mbps**；
-   - 包含无签名容器 ECDSA 跳过同时保留全组件 SHA-256 校验补丁（`0x868C70A4`）。
+   - 解锁设置菜单版本按钮预检与 UPD 版本比较（`0x8681E9A2`、`0x8681E9DE`、`0x86867D12`），支持自由升级、同级重刷与降级回退原厂固件（完整保留 `MC801` 机型保护）；
+   - 包含容器组件表直跳与全组件 SHA-256 + 外层 CRC32 完整性强校验补丁（`0x868C704E`、`0x868C70A4`）。
 
 ---
 
 ## 二、两种部署方式（强烈推荐方式 A：魔灯式 SD 卡热插拔）
 
 ### 方式 A：极简永固底座 + SD 卡热插拔模块（推荐！）
-- **只需刷一次 NAND**：将 `S5___V29_BASE_LOADER.bin` 改名为 **`S5___V30.bin`** 拷入 SD 卡根目录刷入相机（容器版本头已升为 **`Ver. 3.0` (`0x0300`)**，可直接被已装 2.9 的机身识别升级；机内运行版本仍保留 `2.9` 方便后续反复升级；机内仅驻留 `1,064 B` 引导器 + `80 B` 拍照桥接桩 + 6K/ALL-I/300M 基础解锁）。
-- **日常升级只拷 SD 卡**：将 **`S5_MOD.BIN`**（仅 `31.1 KB`）拷到 SD 卡根目录（`A:\S5_MOD.BIN` 或 `B:\S5_MOD.BIN`），开机首次按键/打开控制中心即自动校验 CRC32 并热加载进 `0x07100000`（1 MB 专属空间）。
+- **只需刷一次 NAND**：将 `S5___V29_BASE_LOADER.bin` 改名为 **`S5___V30.bin`** 拷入 SD 卡根目录刷入相机（容器版本头已升为 **`Ver. 3.0` (`0x0300`)**，可直接被已装 2.9 的机身识别升级；机内运行版本仍保留 `2.9` 并已解锁上下/同级自由刷机；机内仅驻留 `1,184 B` 引导器 + `80 B` 拍照桥接桩 + 6K/ALL-I/300M 基础解锁）。
+- **日常升级只拷 SD 卡**：将 **`S5_MOD.BIN`**（仅 `31.1 KB`）拷到 SD 卡根目录（`A:\S5_MOD.BIN` 或 `B:\S5_MOD.BIN`，若卡槽 1 文件损坏会自动回退读取卡槽 2），开机首次按键或打开控制中心即自动校验 CRC32、同步 4 核 `ICIALLUIS` 指令缓存并热加载进 `0x07100000`（1 MB 专属空间）。
 - **零变砖保障**：拔出 SD 卡或删除 `S5_MOD.BIN` 重启，所有钩子自动回退至 100% 原厂行为；文件损坏时 CRC32 自动拦截拒载。
 - **底座与模块构建验证命令**：
   ```bash
@@ -55,8 +56,8 @@
   python3 tools/verify_loader_and_mod.py
   python3 tools/pack_firmware.py --patch-dir ./build_loader --out-bin ./S5___V29_BASE_LOADER.bin --version-bcd 0x0300
   ```
-- **校验值（容器头 `Ver. 3.0 / 0x0300`，内置上下/同级自由刷机补丁 `0x86867D12`）**：
-  - `S5___V29_BASE_LOADER.bin`（`90,238,464` bytes，Outer CRC32: `0x4e2b1103`）：`119592030d275c9570a9dc5e17a0be7198cafcfd0758d141da566769fe984dd8`
+- **校验值（容器头 `Ver. 3.0 / 0x0300`，内置上下/同级自由刷机补丁）**：
+  - `S5___V29_BASE_LOADER.bin`（`90,238,464` bytes，Outer CRC32: `0x3ee75010`）：`369232e9fbca14b0e70dce4a8fa12bffcb4e1a3df944203bbfb7013dca702fea`
   - `S5_MOD.BIN`（`31,880` bytes，Payload CRC32: `0xf53178be`）：`17178455b57057b89d06c52332ca1dd0f6c9b759f66a4d80c43f7d26342b9362`
 
 ### 方式 B：一体化整包（免放 `S5_MOD.BIN`）
@@ -69,17 +70,27 @@
 ```text
 # RULES-ACTIVE-GLOBAL
 lumix-s5-v29-firmware/
-├── S5___V29_ALL_PATCHED.bin           # 完整重加密并校验通过的刷机固件包 (90,238,464 B)
+├── S5___V29_BASE_LOADER.bin           # 方式 A：极简永固底座刷机包 (90,238,464 B, V3.0 容器头)
+├── S5_MOD.BIN                         # 方式 A：SD 卡热插拔功能模块 (31,880 B, 带 CRC32)
+├── S5___V29_ALL_PATCHED.bin           # 方式 B：一体化全功能刷机包 (90,238,464 B, V3.0 容器头)
+├── loader/
+│   ├── s5_mod_abi.h                   # 底座与 SD 模块共享 ABI 及内存映射定义
+│   ├── s5_loader.c                    # 1,184 B 常驻 SD 模块热加载器 (0x070F8000)
+│   └── pb3_stub.c                     # 80 B 跨地址域 JPEG 桥接桩 (0x879F7900)
+├── mod/
+│   └── s5_mod_main.c                  # S5_MOD.BIN 模块入口与钩子注册表
 ├── src/
 │   ├── control_center.c               # 中文控制中心 + S5II 实时 LUT 快捷条 + SD .CUBE/.VLT 加载器
 │   ├── cc_font_zh.h                   # 内嵌点阵中文字模表
 │   ├── hook.c                         # Direct-YCbCr 9^3 四面体 JPEG 实时 LUT 烘焙内核
 │   └── lut_tables.h                   # 0xBEEF 八分体反映射表
 ├── tools/
-│   ├── patch_s5_video_unlim.py        # 视频时长/规格/码率/回放 LUT/ECDSA 基础补丁器
-│   ├── build_combined.py              # 编译 ARMv7 载荷并生成 03_program / 07_postboot3 / 20_osdover
-│   ├── verify_combined.py             # Unicorn ARM 全套仿真回归测试（8 大用例 + 渲染预览图）
-│   ├── pack_firmware.py               # AES-5 固件打包 + SHA-256 表更新 + 往返解密比对
+│   ├── patch_s5_video_unlim.py        # 视频时长/规格/码率/回放 LUT/自由刷机基础补丁器
+│   ├── build_loader_and_mod.py        # 编译方式 A 永固底座与 SD 卡 S5_MOD.BIN
+│   ├── verify_loader_and_mod.py       # Unicorn ARM 分离式底座与双卡回退全场景验证
+│   ├── build_combined.py              # 编译方式 B 一体化载荷 (03_program / 07_postboot3 / 20_osdover)
+│   ├── verify_combined.py             # Unicorn ARM 一体化回归测试（8 大用例 + 渲染预览图）
+│   ├── pack_firmware.py               # AES-5 固件打包 + SHA-256 表更新 + 逐字节白名单往返比对
 │   ├── run_qemu_patched.py            # 4 核 ARMv7 QEMU RTOS 冷启动实测脚本
 │   ├── gen_lut_tables.py              # 八分体查表生成工具
 │   ├── gen_zh_font.py                 # 中文字库头文件生成工具
@@ -90,7 +101,7 @@ lumix-s5-v29-firmware/
 
 ---
 
-## 三、SD 卡目录放置说明
+## 四、SD 卡目录放置说明
 
 1. **刷机包放置**：将 `S5___V29_BASE_LOADER.bin` 或 `S5___V29_ALL_PATCHED.bin` 拷入相机格式化好的 SD 卡根目录并重命名为 **`S5___V30.bin`**（因容器头已升版至 `Ver. 3.0`，已安装 V2.9 的机身会直接识别为新版本）。
 2. **自定义 100 个 LUT 放置**（插在卡槽 1 `A:` 或卡槽 2 `B:` 均可）：
@@ -107,7 +118,7 @@ lumix-s5-v29-firmware/
 
 ---
 
-## 四、复现构建、仿真验证与打包命令
+## 五、复现构建、仿真验证与打包命令
 
 ```bash
 # RULES-ACTIVE-GLOBAL
@@ -126,13 +137,13 @@ python3 tools/run_qemu_patched.py --patched-dir ./build
 
 ---
 
-## 五、固件校验值（SHA-256 & CRC32）
+## 六、一体化整包校验值（SHA-256 & CRC32）
 
-- **`S5___V29_ALL_PATCHED.bin`**（`90,238,464` bytes，容器头 `V3.0 / 0x0300`，Outer CRC32: `0x81afcb75`）：
-  `bc23c60d906f05b6035aaff1f5a1f9cebabaf88c2dd67b9755e9186f5d2fbb85`
-- **`03_program.bin`**：
-  `85e92ca65de3ad7c8318a39a443de533739306a6fdb3608695df582560153ff5`
-- **`07_postboot3.bin`**：
-  `7e444669a577d09eb1b4b2d69c32e43802d4bf180f8f3caeac99ae16f268e1d8`
+- **`S5___V29_ALL_PATCHED.bin`**（`90,238,464` bytes，容器头 `V3.0 / 0x0300`，Outer CRC32: `0x99227977`）：
+  `b48836561aaa7b22e3a5b599b0a0fe535aadde1a08ba9eb3787470a3993491e5`
+- **`03_program.bin`**（一体化）：
+  `58052df5096cdddbbef06b4bc38b66e65ce1add910969dc54b03dacfef3473ca`
+- **`07_postboot3.bin`**（一体化）：
+  `9f2691c2e911e608432f7f892273bb792f60dba7fee610fa4d9809eaa0ed5b18`
 - **`20_osdover.bin`**：
   `2181c40dd01ad78cca584a64c2292dcb9f57121d9340fcc963bbf33b276af843`

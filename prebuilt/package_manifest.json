@@ -1,7 +1,7 @@
 {
   "official_sha256": "b2ec4aeec209693b874df8dfdf11fc85b38fa4675b44ec554b7a167f430827e1",
   "container_version_bcd": "0x0300",
-  "output": "/Users/lixiuqi/相机功能验证/lumix-s5-v29-firmware/S5___V29_ALL_PATCHED.bin",
+  "output": "S5___V29_ALL_PATCHED.bin",
   "components": [
     {
       "index": 3,
@@ -9,7 +9,7 @@
       "file": "03_program.bin",
       "size": 16674816,
       "iv": "1198b52525a4a0d03c6b9eee4d650bdf",
-      "plaintext_sha256": "f605d969085f4f9b6fd4d031aab7e281695e5789ec8f3c48db3d3480505a3b6f"
+      "plaintext_sha256": "58052df5096cdddbbef06b4bc38b66e65ce1add910969dc54b03dacfef3473ca"
     },
     {
       "index": 7,
@@ -28,7 +28,7 @@
       "plaintext_sha256": "2181c40dd01ad78cca584a64c2292dcb9f57121d9340fcc963bbf33b276af843"
     }
   ],
-  "output_sha256": "bc23c60d906f05b6035aaff1f5a1f9cebabaf88c2dd67b9755e9186f5d2fbb85",
-  "outer_crc32": "0x81afcb75",
+  "output_sha256": "b48836561aaa7b22e3a5b599b0a0fe535aadde1a08ba9eb3787470a3993491e5",
+  "outer_crc32": "0x99227977",
   "round_trip_verified": true
 }

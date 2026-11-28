@@ -129,13 +129,27 @@ def main() -> None:
         written = args.out_bin.read_bytes()
         assert len(written) == len(official)
         assert struct.unpack_from("<I", written, 0x40)[0] == (zlib.crc32(written[0x200:]) & 0xFFFFFFFF)
+        assert written[0x000:0x040] == written[0x2A0:0x2E0], "Outer/inner 0x40 UPD header mismatch!"
+
+        allowed_ranges = [(0x01C, 0x020), (0x040, 0x044), (0x2BC, 0x2C0)]
         for idx, filename in targets:
             rec = parse_entry(written, idx)
+            allowed_ranges.append((rec["table_off"] + 0x1C, rec["table_off"] + 0x3C))
+            allowed_ranges.append((rec["offset"], rec["offset"] + rec["size"]))
             dec_path = tmp_dir / f"{idx:02d}_dec_verify.bin"
             run_aes5(args.aes_tool, args.out_bin, dec_path, rec["iv"], rec["offset"], rec["size"], encrypt=False)
             dec_bytes = dec_path.read_bytes()
             assert dec_bytes == (args.patch_dir / filename).read_bytes()
             assert sha256(dec_bytes) == rec["sha256"]
+
+        allowed_ranges.sort()
+        cursor = 0
+        for lo, hi in allowed_ranges:
+            if cursor < lo and written[cursor:lo] != official[cursor:lo]:
+                raise AssertionError(f"Unexpected container byte mutation in [0x{cursor:x}, 0x{lo:x})")
+            cursor = max(cursor, hi)
+        if cursor < len(written) and written[cursor:] != official[cursor:]:
+            raise AssertionError(f"Unexpected container byte mutation in [0x{cursor:x}, 0x{len(written):x})")
 
     report["output_sha256"] = sha256(args.out_bin.read_bytes())
     report["outer_crc32"] = f"0x{crc:08x}"

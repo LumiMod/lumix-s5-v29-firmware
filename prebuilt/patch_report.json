@@ -1,14 +1,14 @@
 {
-  "source": "/Users/lixiuqi/相机功能验证/s5_v29_decrypted/03_program.bin",
+  "source": "../s5_v29_decrypted/03_program.bin",
   "source_sha256": "fc496d62a91f6e9b1b84807183bb805bc546c9105d2938546b58a66ad9d132fe",
-  "output": "/Users/lixiuqi/相机功能验证/lumix-s5-v29-firmware/build/03_program.bin",
-  "output_sha256": "113c3205af8af6d03668e33fdcdcb739d20bbc87cd2135113c82433b6c378a22",
+  "output": "build/03_program.bin",
+  "output_sha256": "2a04b48c795855ff21d2e7f771008939cc5cce8e422c6d1a357afc8cc5094952",
   "size_bytes": 16674816,
   "with_all_i": true,
   "all_modes": true,
   "bitrate_mbps_6k_59k": 300,
   "playback_lut_fix": true,
-  "patches_applied": 62,
+  "patches_applied": 65,
   "patches": [
     {
       "name": "remove_recording_time_limit",
@@ -18,11 +18,32 @@
       "new_u16": "0x2000"
     },
     {
+      "name": "ui_allow_any_version_button",
+      "va": "0x8681e9a2",
+      "file_offset": "0x59e9a2",
+      "old_u16": "0xd100",
+      "new_u16": "0xbf00"
+    },
+    {
+      "name": "ui_allow_same_subversion",
+      "va": "0x8681e9de",
+      "file_offset": "0x59e9de",
+      "old_u16": "0xd009",
+      "new_u16": "0xe009"
+    },
+    {
       "name": "allow_any_version_flash_up_down",
       "va": "0x86867d12",
       "file_offset": "0x5e7d12",
       "old_u16": "0xda0b",
       "new_u16": "0xbf00"
+    },
+    {
+      "name": "pkg_dispatch_to_component_sha256",
+      "va": "0x868c704e",
+      "file_offset": "0x64704e",
+      "old_u16": "0xd021",
+      "new_u16": "0xe023"
     },
     {
       "name": "unsigned_skip_ecdsa_keep_sha256",

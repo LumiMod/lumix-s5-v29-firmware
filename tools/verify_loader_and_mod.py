@@ -205,6 +205,17 @@ def main() -> None:
     assert logs["clear_ops"] == 0
     print("PASS Scenario A (No SD card / no S5_MOD.BIN): 100% stock fallback on all hooks")
 
+    # --- Verify all updater version & SHA-256 dispatch patches in 03_program.bin ---
+    for va, exp in (
+        (0x8681E9A2, 0xBF00),
+        (0x8681E9DE, 0xE009),
+        (0x86867D12, 0xBF00),
+        (0x868C704E, 0xE023),
+        (0x868C70A4, 0xE7F8),
+    ):
+        got = struct.unpack_from("<H", prog, va - 0x86280000)[0]
+        assert got == exp, f"Patch check failed @ 0x{va:08X}: got 0x{got:04X}, expected 0x{exp:04X}"
+
     # --- Scenario B: Corrupted S5_MOD.BIN (1 bit flipped) -> CRC32 rejection! ---
     bad_mod = bytearray(mod_blob)
     bad_mod[64] ^= 0x01
@@ -213,6 +224,15 @@ def main() -> None:
     assert uc_b.mem_read(0x070FC000 + 8, 3) == b"\x00\x01\x03"  # loaded=0, probed=1, load_err=3 (bad_crc)
     assert logs_b["orig_key"] == [(3, 1)]
     print("PASS Scenario B (Corrupted S5_MOD.BIN): CRC32 mismatch rejected safely (load_err=3)")
+
+    # --- Scenario B2: Corrupted A:\S5_MOD.BIN + valid B:\S5_MOD.BIN -> Dual-slot fallback to B:! ---
+    uc_b2, logs_b2, RET_B2 = make_harness(
+        prog, pb3, {"A:\\S5_MOD.BIN": bytes(bad_mod), "B:\\S5_MOD.BIN": mod_blob}
+    )
+    send_key(uc_b2, 3, 1)
+    assert uc_b2.mem_read(0x070FC000 + 8, 4) == b"\x01\x01\x00\x01", "Dual-card fallback to B: failed!"
+    assert logs_b2["orig_key"] == [(3, 1)]
+    print("PASS Scenario B2 (Corrupted A:\\ + Valid B:\\): Dual-card fallback loaded B:\\S5_MOD.BIN (drive_idx=1)")
 
     # --- Scenario C & D: Valid A:\S5_MOD.BIN + SD .CUBE LUT -> full hot-load & cross-domain JPEG bake! ---
     cube_lines = ["TITLE \"Kodak2383\"\n", "LUT_3D_SIZE 17\n"]

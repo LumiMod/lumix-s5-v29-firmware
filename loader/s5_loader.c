@@ -45,8 +45,15 @@ static void ldr_dcache_range(uint32_t addr, uint32_t bytes, int clean_only) {
 static void ldr_sync_icache(uint32_t addr, uint32_t bytes) {
     ldr_dcache_range(addr, bytes, 1);
     uint32_t z = 0u;
-    __asm__ volatile("mcr p15, 0, %0, c7, c5, 0" :: "r"(z) : "memory"); /* ICIALLU */
-    __asm__ volatile("dsb sy\n\tisb" ::: "memory");
+    /* Broadcast I-Cache & branch predictor invalidate across all 4 Cortex-A7 SMP cores */
+    __asm__ volatile(
+        "mcr p15, 0, %0, c7, c1, 0\n\t" /* ICIALLUIS (Inner Shareable SMP broadcast) */
+        "mcr p15, 0, %0, c7, c5, 0\n\t" /* ICIALLU   (local core I-Cache) */
+        "mcr p15, 0, %0, c7, c5, 6\n\t" /* BPIALL    (local branch predictor) */
+        "dsb sy\n\t"
+        "isb"
+        :: "r"(z) : "memory"
+    );
 }
 
 static uint32_t ldr_crc32(const uint8_t *buf, uint32_t len) {
@@ -83,9 +90,19 @@ static uint32_t ldr_fs_read_dma(uint32_t fd, uint8_t *io, uint32_t len) {
     return stat[1];
 }
 
+#define S5_LOADER_LOCK_ADDR 0x070FC040u
+
 static int ldr_try_load_mod(volatile S5ModTable *tbl) {
     if (tbl->loaded)
         return 1;
+
+    volatile uint32_t *lock = (volatile uint32_t *)(uintptr_t)S5_LOADER_LOCK_ADDR;
+    if (__sync_lock_test_and_set(lock, 1u) != 0u)
+        return 0;
+    if (tbl->loaded) {
+        __sync_lock_release(lock);
+        return 1;
+    }
 
     fs_parse_fn p_parse = (fs_parse_fn)(uintptr_t)FN_FS_PARSE_PATH;
     fs_open_fn  p_open  = (fs_open_fn)(uintptr_t)FN_FS_OPEN;
@@ -93,7 +110,7 @@ static int ldr_try_load_mod(volatile S5ModTable *tbl) {
     uint8_t *io = (uint8_t *)(uintptr_t)S5_LOADER_IO_BUF_ADDR;
 
     tbl->probed = 1u;
-    tbl->load_err = 1u;
+    uint8_t last_err = 1u;
 
     for (uint8_t d = 0u; d < 2u; ++d) {
         uint32_t drv = 0u, fd = 0u;
@@ -107,8 +124,8 @@ static int ldr_try_load_mod(volatile S5ModTable *tbl) {
         uint32_t got = ldr_fs_read_dma(fd, io, sizeof(S5ModHeader));
         if (got != sizeof(S5ModHeader)) {
             p_close(fd, 0u);
-            tbl->load_err = 2u;
-            return 0;
+            last_err = 2u;
+            continue;
         }
 
         S5ModHeader hdr;
@@ -126,8 +143,8 @@ static int ldr_try_load_mod(volatile S5ModTable *tbl) {
             hdr.entry_addr >= S5_MOD_LOAD_ADDR + hdr.payload_size ||
             !(hdr.entry_addr & 1u)) {
             p_close(fd, 0u);
-            tbl->load_err = 2u;
-            return 0;
+            last_err = 2u;
+            continue;
         }
 
         uint8_t *dst = (uint8_t *)(uintptr_t)S5_MOD_LOAD_ADDR;
@@ -146,14 +163,14 @@ static int ldr_try_load_mod(volatile S5ModTable *tbl) {
         p_close(fd, 0u);
 
         if (off != hdr.payload_size) {
-            tbl->load_err = 4u;
-            return 0;
+            last_err = 4u;
+            continue;
         }
 
         uint32_t crc = ldr_crc32(dst, hdr.payload_size);
         if (crc != hdr.crc32) {
-            tbl->load_err = 3u;
-            return 0;
+            last_err = 3u;
+            continue;
         }
 
         for (uint32_t i = 0; i < hdr.bss_size; ++i)
@@ -172,8 +189,13 @@ static int ldr_try_load_mod(volatile S5ModTable *tbl) {
         __asm__ volatile("dmb sy" ::: "memory");
         tbl->loaded = 1u;
         ldr_dcache_range(S5_MOD_TABLE_ADDR, sizeof(S5ModTable), 1);
+        __sync_lock_release(lock);
         return 1;
     }
+
+    tbl->load_err = last_err;
+    ldr_dcache_range(S5_MOD_TABLE_ADDR, sizeof(S5ModTable), 1);
+    __sync_lock_release(lock);
     return 0;
 }
 

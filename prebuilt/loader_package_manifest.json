@@ -1,0 +1,34 @@
+{
+  "official_sha256": "b2ec4aeec209693b874df8dfdf11fc85b38fa4675b44ec554b7a167f430827e1",
+  "container_version_bcd": "0x0300",
+  "output": "S5___V29_BASE_LOADER.bin",
+  "components": [
+    {
+      "index": 3,
+      "name": "program",
+      "file": "03_program.bin",
+      "size": 16674816,
+      "iv": "1198b52525a4a0d03c6b9eee4d650bdf",
+      "plaintext_sha256": "816e09986a05d18f41971658eae767cd7b34a749431723069e7a86bbc5572fa5"
+    },
+    {
+      "index": 7,
+      "name": "postboot3",
+      "file": "07_postboot3.bin",
+      "size": 8257536,
+      "iv": "3a3a619d8316c86a5ae73a7a5e73abc2",
+      "plaintext_sha256": "74ca57f436c45d3e00a2504aad60a6269523e9eaf49374159140fcf5d505e979"
+    },
+    {
+      "index": 20,
+      "name": "osdover",
+      "file": "20_osdover.bin",
+      "size": 10485760,
+      "iv": "16261b47a44e3cc6c1675a4baed8180f",
+      "plaintext_sha256": "2181c40dd01ad78cca584a64c2292dcb9f57121d9340fcc963bbf33b276af843"
+    }
+  ],
+  "output_sha256": "369232e9fbca14b0e70dce4a8fa12bffcb4e1a3df944203bbfb7013dca702fea",
+  "outer_crc32": "0x3ee75010",
+  "round_trip_verified": true
+}
