@@ -10,6 +10,7 @@
  *   to 100% factory stock Panasonic firmware behavior! */
 
 #define FN_KEY_DISPATCH     0x06643681u
+#define FN_RAW_INPUT        0x06642D23u
 #define FN_ORIG_PIXEL_REF   0x06825F19u
 #define FN_ORIG_LV_STYLE    0x066A07F5u
 
@@ -17,14 +18,17 @@
 #define FN_FS_OPEN          0x067DC0D5u
 #define FN_FS_READ          0x06432F01u
 #define FN_FS_CLOSE         0x067DA161u
+#define FN_FS_CHECK_DRIVE   0x0668794Bu
 #define FS_MODE_READ        0x0401u
 
 typedef void (*orig_key_fn)(uint32_t *ev);
+typedef void (*orig_raw_fn)(uint32_t source, const uint32_t *state);
 typedef int  (*orig_lv_style_fn)(uint32_t style);
 typedef uint32_t (*fs_parse_fn)(const char *path, uint32_t *out_drv, const char **out_rel, uint16_t *out_flag);
 typedef uint32_t (*fs_open_fn)(uint32_t drv, uint32_t *out_fd, const char *rel, uint32_t mode);
 typedef uint32_t (*fs_read_fn)(uint32_t fd, void *buf, uint32_t flags, uint32_t len, uint32_t z, uint32_t *out_stat);
 typedef uint32_t (*fs_close_fn)(uint32_t fd, uint32_t flags);
+typedef uint32_t (*fs_check_drive_fn)(uint32_t drv, uint32_t mode);
 
 static const char *const MOD_PATHS[2] = { "A:\\S5_MOD.BIN", "B:\\S5_MOD.BIN" };
 
@@ -91,6 +95,7 @@ static uint32_t ldr_fs_read_dma(uint32_t fd, uint8_t *io, uint32_t len) {
 }
 
 #define S5_LOADER_LOCK_ADDR 0x070FC040u
+#define S5_LOADER_READY_MASK_ADDR 0x070FC044u
 
 static int ldr_try_load_mod(volatile S5ModTable *tbl) {
     if (tbl->loaded)
@@ -199,6 +204,42 @@ static int ldr_try_load_mod(volatile S5ModTable *tbl) {
     return 0;
 }
 
+/* Native drive validator used by fs_open before its filesystem semaphore.
+ * These three handle identities come from 0x06687960..0x0668797A in S5 V2.9.
+ * The validator only reads fields: no path dispatch, file I/O or waits while
+ * the filesystems are not ready. Do not infer readiness from the first key. */
+static uint32_t ldr_ready_drives(void) {
+    fs_check_drive_fn check = (fs_check_drive_fn)(uintptr_t)FN_FS_CHECK_DRIVE;
+    uint32_t mask = 0u;
+    for (uint32_t i = 0u; i < 3u; ++i) {
+        uint32_t drv = 0x8C2C41C0u + i * 0x00120F10u + 0x00098ED8u;
+        if (check(drv, 1u) == 0u)
+            mask |= 1u << i;
+    }
+    return mask;
+}
+
+/* Physical message 0x11F001, callsite 0x064759BE. Only new button/joystick
+ * presses may probe; repeats, releases, idle and generic UI events cannot.
+ * An observed drive-readiness transition allows retry after an early miss.
+ * Setup/Fn remain explicit retries (including same-state card replacements).
+ * Always forward the original source/payload to the native raw-state handler. */
+void ldr_raw_input_hook(uint32_t source, const uint32_t *state) {
+    volatile S5ModTable *tbl = ldr_get_table();
+    if (!tbl->loaded && state &&
+        ((state[1] & 0x2FFFu) || (state[9] & 0x3FFFFu))) {
+        volatile uint32_t *last = (volatile uint32_t *)(uintptr_t)S5_LOADER_READY_MASK_ADDR;
+        uint32_t ready = ldr_ready_drives();
+        if (ready != *last) {
+            *last = ready;
+            tbl->probed = 0u;
+        }
+        if (ready && !tbl->probed)
+            ldr_try_load_mod(tbl);
+    }
+    ((orig_raw_fn)(uintptr_t)FN_RAW_INPUT)(source, state);
+}
+
 /* Software-key message 0x11F002 only; physical input uses 0x11F001 instead. */
 void ldr_key_hook(uint32_t *ev) {
     volatile S5ModTable *tbl = ldr_get_table();
@@ -213,7 +254,7 @@ void ldr_key_hook(uint32_t *ev) {
 
 /* Common native UI event entry. Do not probe SD here: unrelated UI events and
  * the module's own initialization can re-enter this dispatcher. Setup/Fn and
- * the existing software-key hook retain their explicit loading paths. */
+ * the physical/software-key hooks retain their task-context loading paths. */
 int ldr_ui_event_handler(uint32_t event, uint32_t param, uint32_t extra) {
     volatile S5ModTable *tbl = ldr_get_table();
     if (tbl->loaded && tbl->abi_version == S5_MOD_ABI_VERSION && tbl->on_ui_event)

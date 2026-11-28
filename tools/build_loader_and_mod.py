@@ -58,6 +58,8 @@ S5_MOD_HDR_MAGIC = 0x444D3553  # "S5MD"
 S5_MOD_ABI_VERSION = 2
 UI_EVENT_ENTRY_LOW = 0x066BEEA6
 UI_EVENT_ORIG_PROLOGUE = bytes.fromhex("2de9f041")  # push.w {r4-r8,lr}
+RAW_INPUT_CALLSITE_LOW = 0x064759BE
+RAW_INPUT_ORIG_LOW = 0x06642D22
 
 DEFAULT_DEC_DIR = REPO_ROOT.parent / "s5_v29_decrypted"
 DEFAULT_OUT_DIR = REPO_ROOT / "build_loader"
@@ -179,6 +181,10 @@ def build_base_program(dec_dir: Path, out_dir: Path) -> dict:
     assert prog[key_off:key_off + 4] == make_bl(KEY_DISPATCH_LOW, KEY_DISPATCH_ORIG_LOW)
     prog[key_off:key_off + 4] = make_bl(KEY_DISPATCH_LOW, syms["ldr_key_hook"] & ~1)
 
+    raw_off = RAW_INPUT_CALLSITE_LOW - PROG_BASE_LOW
+    assert prog[raw_off:raw_off + 4] == make_bl(RAW_INPUT_CALLSITE_LOW, RAW_INPUT_ORIG_LOW)
+    prog[raw_off:raw_off + 4] = make_bl(RAW_INPUT_CALLSITE_LOW, syms["ldr_raw_input_hook"] & ~1)
+
     ui_off = UI_EVENT_ENTRY_LOW - PROG_BASE_LOW
     assert prog[ui_off:ui_off + 4] == UI_EVENT_ORIG_PROLOGUE
     prog[ui_off:ui_off + 4] = make_bw(UI_EVENT_ENTRY_LOW, syms["ldr_ui_event_trampoline"] & ~1)
@@ -215,6 +221,8 @@ def build_base_program(dec_dir: Path, out_dir: Path) -> dict:
         "loader_bytes": len(payload),
         "table_address": f"0x{LOADER_TABLE_LOW:08x}",
         "ldr_key_hook": f"0x{syms['ldr_key_hook']:08x}",
+        "raw_input_callsite": f"0x{RAW_INPUT_CALLSITE_LOW:08x}",
+        "ldr_raw_input_hook": f"0x{syms['ldr_raw_input_hook']:08x}",
         "ui_event_entry": f"0x{UI_EVENT_ENTRY_LOW:08x}",
         "ldr_ui_event_trampoline": f"0x{syms['ldr_ui_event_trampoline']:08x}",
         "ldr_setup_menu_trampoline": f"0x{syms['ldr_setup_menu_trampoline']:08x}",

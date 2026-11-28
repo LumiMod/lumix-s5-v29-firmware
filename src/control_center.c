@@ -97,6 +97,7 @@
 #define SD_STAT_LOADED      1u  /* [SD卡已加载] */
 #define SD_STAT_SAVED       2u  /* [SD卡已保存] */
 #define SD_STAT_DIRTY       3u  /* [未保存] */
+#define SD_STAT_SAVE_FAILED 4u  /* [保存失败] */
 
 typedef struct {
     uint32_t magic;            /* +0  */
@@ -960,7 +961,7 @@ static int cc_sd_save(volatile CcState *st) {
             return 1;
         }
     }
-    st->sd_status = SD_STAT_NONE;
+    st->sd_status = SD_STAT_SAVE_FAILED;
     return 0;
 }
 
@@ -1025,6 +1026,8 @@ static void cc_adjust_item(volatile CcState *st, int dir, int is_set) {
         break;
     }
     case 5:
+        if (!is_set)
+            return;
         cc_set_builtin_slot(st, 0u);
         st->lut_hotkey = LUT_HK_BAR;
         st->lut_all_styles = 0u;
@@ -1034,8 +1037,10 @@ static void cc_adjust_item(volatile CcState *st, int dir, int is_set) {
         cc_dcache_range(CC_STATE_ADDR, sizeof(CcState), 1);
         break;
     case 6:
-        cc_sd_save(st);
-        st->visible = CC_VIS_OFF;
+        if (!is_set)
+            return;
+        if (cc_sd_save(st))
+            st->visible = CC_VIS_OFF;
         break;
     default:
         break;
@@ -1338,6 +1343,8 @@ static void cc_render_overlay(volatile CcState *st, int32_t surf_w, int32_t surf
         sd_str = "[SD卡已加载]"; sd_bg = COL_GREEN; sd_fg = COL_DARK_TXT; sd_w = 156;
     } else if (st->sd_status == SD_STAT_DIRTY) {
         sd_str = "[未保存]"; sd_bg = COL_AMBER; sd_fg = COL_DARK_TXT; sd_w = 114;
+    } else if (st->sd_status == SD_STAT_SAVE_FAILED) {
+        sd_str = "[保存失败]"; sd_bg = COL_RED; sd_w = 156;
     }
     cc_rect(surf_h, px + 368, py + 56, sd_w, 28, sd_bg);
     cc_text(surf_h, px + 378, py + 59, 1, sd_str, sd_fg);
